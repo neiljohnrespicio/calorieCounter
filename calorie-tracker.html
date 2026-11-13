@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Calorie Tracker</title>
+<style>
+:root{
+ --bg:#f5f4ef;--surface:#ffffff;--surface2:#f3f2ec;--ink:#16201b;--mute:#76807a;--line:#e9e6de;
+ --acc:#12a67f;--acc-ink:#ffffff;--acc-soft:#dff4ec;--warn:#e5484d;--warn-soft:#fdeaea;
+ --shadow:0 1px 2px rgba(22,32,27,.05),0 10px 30px rgba(22,32,27,.07);--r:20px;
+}
+@media(prefers-color-scheme:dark){:root{
+ --bg:#0e1411;--surface:#161f1a;--surface2:#1c2721;--ink:#e9f1ec;--mute:#8a9890;--line:#25312a;
+ --acc:#2dd4a7;--acc-ink:#04241a;--acc-soft:#143a2f;--warn:#ff6b70;--warn-soft:#3a1c1e;
+ --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+.app{max-width:760px;margin:0 auto;padding:18px 16px 110px}
+button{font:inherit;color:inherit;cursor:pointer}
+svg{display:block}
+/* header */
+.top{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.logo{width:40px;height:40px;border-radius:13px;background:var(--acc);color:var(--acc-ink);display:grid;place-items:center;font-size:20px}
+.top h1{font-size:20px;margin:0;letter-spacing:-.02em;flex:1}
+.goal{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:5px 6px 5px 14px;box-shadow:var(--shadow);font-size:13px;color:var(--mute)}
+.top h1{white-space:nowrap}
+.goal{padding-right:14px;white-space:nowrap}
+@media(max-width:480px){.hsm{display:none}.top h1{font-size:18px}}
+.goal input{width:70px;border:0;background:var(--surface2);border-radius:99px;padding:6px 10px;text-align:right;font-weight:700;color:var(--ink)}
+/* tabs */
+.tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);padding:5px;border-radius:99px;box-shadow:var(--shadow);margin-bottom:18px}
+.tabs button{flex:1;border:0;background:none;padding:10px 8px;border-radius:99px;color:var(--mute);font-weight:600;display:flex;gap:7px;align-items:center;justify-content:center;transition:.15s}
+.tabs button svg{width:18px;height:18px}
+.tabs button.on{background:var(--acc);color:var(--acc-ink)}
+.tabs button:not(.on):hover{background:var(--surface2);color:var(--ink)}
+@media(max-width:640px){
+ .tabs{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));margin:0;z-index:20;padding:6px}
+ .tabs button{flex-direction:column;gap:2px;font-size:11px;padding:8px 4px}
+}
+/* cards */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin-bottom:14px;box-shadow:var(--shadow)}
+.card h2{font-size:13px;margin:0 0 14px;color:var(--mute);font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.mute{color:var(--mute)}.hint{font-size:12.5px;color:var(--mute)}
+label{display:block;font-size:12px;font-weight:600;color:var(--mute);margin-bottom:5px}
+input,select{width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:12px;background:var(--surface2);color:var(--ink);font:inherit;transition:.15s}
+input:focus,select:focus{outline:none;border-color:var(--acc);background:var(--surface);box-shadow:0 0 0 4px var(--acc-soft)}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.c2{grid-column:span 2}.c4{grid-column:span 4}
+@media(max-width:560px){.grid{grid-template-columns:1fr 1fr}.c2{grid-column:span 2}.c4{grid-column:span 2}}
+.btn{border:1.5px solid var(--line);background:var(--surface);padding:11px 18px;border-radius:12px;font-weight:600;transition:.15s}
+.btn:hover{background:var(--surface2)}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
+.btn.pri:hover{filter:brightness(.93)}
+.btn.bad{color:var(--warn);border-color:transparent;background:var(--warn-soft)}
+.btn.ghost{border-color:transparent;background:none;color:var(--mute)}
+.btn.sm{padding:6px 11px;font-size:13px;border-radius:9px}
+.btn.round{width:42px;height:42px;padding:0;border-radius:50%;display:grid;place-items:center;font-size:18px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.grow{flex:1}
+/* day nav */
+.dnav{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.dnav .when{flex:1;position:relative;text-align:center;line-height:1.2}
+.dnav .when b{display:block;font-size:18px;letter-spacing:-.01em}
+.dnav .when span{font-size:13px;color:var(--mute)}
+.dnav .when input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+/* hero */
+.hero{display:grid;grid-template-columns:170px 1fr;gap:20px;align-items:center}
+@media(max-width:480px){.hero{grid-template-columns:1fr;justify-items:center;text-align:center}}
+.ringbox{position:relative;width:170px;height:170px}
+.ring{width:100%;height:100%}
+.ring .trk{fill:none;stroke:var(--surface2);stroke-width:11}
+.ring .val{fill:none;stroke:var(--acc);stroke-width:11;stroke-linecap:round;transition:stroke-dashoffset .6s cubic-bezier(.3,.9,.3,1)}
+.ring .val.over{stroke:var(--warn)}
+.ringtxt{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+.ringtxt b{font-size:34px;letter-spacing:-.03em;line-height:1}
+.ringtxt span{font-size:12px;color:var(--mute);margin-top:3px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
+.stat{background:var(--surface2);border-radius:14px;padding:12px 14px;text-align:left}
+.stat span{font-size:12px;color:var(--mute);font-weight:600}
+.stat b{display:block;font-size:22px;letter-spacing:-.02em}
+.stat.over b{color:var(--warn)}
+.stat input{padding:2px 0;border:0;background:none;font-size:22px;font-weight:700;letter-spacing:-.02em;width:100%;box-shadow:none}
+.stat input:focus{box-shadow:none;background:none}
+.split{display:flex;height:10px;border-radius:99px;overflow:hidden;background:var(--surface2);margin-top:18px;gap:2px}
+.split i{display:block;height:100%}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:12.5px;color:var(--mute)}
+.legend span{display:flex;align-items:center;gap:6px}
+.legend u{width:9px;height:9px;border-radius:50%;display:block}
+/* chips */
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{border:1.5px solid var(--line);background:var(--surface);padding:7px 13px;border-radius:99px;font-size:13.5px;font-weight:600;color:var(--ink);transition:.15s}
+.chip:hover{border-color:var(--acc)}
+.chip.on{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
+.chip.recent{font-weight:500;background:var(--surface2);border-color:transparent}
+.livebox{background:var(--acc-soft);color:var(--acc);border-radius:12px;padding:10px 14px;font-weight:700;min-height:42px;display:flex;align-items:center}
+.addrow{display:flex;gap:12px;align-items:stretch;margin-top:14px}
+.addrow .btn{flex:0 0 auto;min-width:130px}
+@media(max-width:560px){.addrow{flex-direction:column}}
+/* meal list */
+.mhead{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.mhead .ic{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;font-size:17px}
+.mhead b{flex:1;font-size:16px}
+.mhead span{font-weight:700}
+.entry{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.entry:first-of-type{border-top:0}
+.entry .t{font-size:12.5px;color:var(--mute);width:46px;font-variant-numeric:tabular-nums}
+.entry .n{flex:1;min-width:0}
+.entry .n div:first-child{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.entry .k{font-weight:700;font-variant-numeric:tabular-nums}
+.x{border:0;background:none;color:var(--mute);width:30px;height:30px;border-radius:50%;display:grid;place-items:center}
+.x:hover{background:var(--warn-soft);color:var(--warn)}
+.x svg{width:16px;height:16px}
+.empty{text-align:center;color:var(--mute);padding:26px 10px}
+.empty b{display:block;font-size:30px;margin-bottom:4px}
+/* segmented */
+.seg{display:flex;background:var(--surface2);border-radius:12px;padding:4px;gap:4px}
+.seg label{flex:1;margin:0;text-align:center;padding:8px 4px;border-radius:9px;cursor:pointer;color:var(--mute);font-size:13px;font-weight:600}
+.seg input{display:none}
+.seg label.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+/* foods list */
+.food{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.food:first-child{border-top:0}
+.food .av{width:38px;height:38px;border-radius:12px;background:var(--acc-soft);color:var(--acc);display:grid;place-items:center;font-weight:800}
+.food .n{flex:1;min-width:0}.food .n b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pill{background:var(--surface2);border-radius:99px;padding:4px 11px;font-size:12.5px;font-weight:600;white-space:nowrap}
+/* history */
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.kpis .stat b{font-size:24px}
+.chart text{fill:var(--mute);font-size:10px}
+.hrow{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line);cursor:pointer}
+.hrow:first-child{border-top:0}
+.hrow:hover b{color:var(--acc)}
+.hrow .d{flex:1}
+.mini{width:90px;height:7px;background:var(--surface2);border-radius:99px;overflow:hidden}
+.mini i{display:block;height:100%;background:var(--acc);border-radius:99px}
+.mini.over i{background:var(--warn)}
+.diff{width:70px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.diff.over{color:var(--warn)}.diff.ok{color:var(--acc)}
+/* data */
+.drop{border:2px dashed var(--line);border-radius:16px;padding:26px;text-align:center;color:var(--mute);cursor:pointer;transition:.15s}
+.drop:hover,.drop.hot{border-color:var(--acc);background:var(--acc-soft);color:var(--acc)}
+.drop b{display:block;color:var(--ink);font-size:16px;margin-bottom:2px}
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}
+.tbl th,.tbl td{padding:6px 8px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl th{color:var(--mute)}
+.scrollx{overflow:auto;border:1px solid var(--line);border-radius:12px}
+#toast{position:fixed;left:50%;bottom:100px;transform:translate(-50%,20px);background:var(--ink);color:var(--bg);padding:11px 18px;border-radius:99px;font-weight:600;opacity:0;pointer-events:none;transition:.25s;z-index:99;max-width:90vw;text-align:center}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+@media(min-width:641px){#toast{bottom:30px}}
+</style>
+</head>
+<body>
+<div class="app">
+ <div class="top"><div class="logo">🥗</div><h1>Calorie Tracker</h1>
+  <label class="goal"><span><span class="hsm">Default </span>goal</span> <input id="tgt" type="number" min="0" step="1" aria-label="Default daily goal in kcal"> kcal</label></div>
+ <nav class="tabs" id="tabs"></nav>
+ <div id="view"></div>
+</div>
+<div id="toast"></div>
+<input type="file" id="fileIn" accept=".csv,text/csv" hidden>
+<script>
+'use strict';
+/* ---------- helpers ---------- */
+const $=(s,r=document)=>r.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const num=v=>{const n=parseFloat(String(v==null?'':v).replace(/,/g,''));return isFinite(n)?n:0;};
+const r0=n=>Math.round(n).toLocaleString('en-US');
+const r1=n=>Number(num(n).toFixed(2)).toLocaleString('en-US');
+const pad=n=>String(n).padStart(2,'0');
+const dstr=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const today=()=>dstr(new Date());
+const nowT=()=>{const d=new Date();return pad(d.getHours())+':'+pad(d.getMinutes());};
+const toDate=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d);};
+const shift=(s,n)=>{const d=toDate(s);d.setDate(d.getDate()+n);return dstr(d);};
+const dayWord=s=>s===today()?'Today':s===shift(today(),-1)?'Yesterday':s===shift(today(),1)?'Tomorrow':toDate(s).toLocaleDateString(undefined,{weekday:'long'});
+const dayFull=s=>toDate(s).toLocaleDateString(undefined,{month:'long',day:'numeric',year:'numeric'});
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('show'),2800);}
+const mealByHour=()=>{const h=new Date().getHours();return h<10?'Breakfast':h<15?'Lunch':h<18?'Snack':'Dinner';};
+const MEALS=['Breakfast','Lunch','Snack','Dinner'];
+const MEAL_STYLE={Breakfast:['🌅','#f59e0b'],Lunch:['🍱','#12a67f'],Snack:['🍎','#3b82f6'],Dinner:['🌙','#6366f1']};
+const mealStyle=m=>MEAL_STYLE[m]||['🍽️','#94a3b8'];
+const ICON={
+ day:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>',
+ foods:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7c-2-2-6-1-6 4 0 5 3 9 6 9s6-4 6-9c0-5-4-6-6-4zM12 7c0-2 1-4 3-4"/></svg>',
+ history:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
+ data:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg>',
+ del:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>'
+};
+
+/* ---------- data ---------- */
+const KEY='calorie_tracker_v2';
+const fresh=()=>({foods:[],log:[],target:2000,dayTargets:{}});
+let db=(()=>{try{const d=JSON.parse(localStorage.getItem(KEY)||localStorage.getItem('calorie_tracker_v1'));if(d&&d.foods&&d.log)return Object.assign(fresh(),d);}catch(e){}return fresh();})();
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(db));}catch(e){toast('Could not auto-save here — please export your CSV.');}};
+const PER={gram:'per gram','100g':'per 100 g',pack:'per pack'};
+const SHORT={gram:'/ g','100g':'/ 100 g',pack:'/ pack'};
+const unitOf=f=>f.per==='pack'?'pack':'g';
+const calcCal=(f,a)=>{a=num(a);return f.per==='100g'?f.cal*a/100:f.cal*a;};
+const targetFor=d=>db.dayTargets[d]!=null?db.dayTargets[d]:db.target;
+const dayLog=d=>db.log.filter(e=>e.date===d).sort((a,b)=>a.time.localeCompare(b.time));
+const dayTotal=d=>db.log.filter(e=>e.date===d).reduce((a,e)=>a+e.cal,0);
+
+/* ---------- the ONE csv ---------- */
+const HEAD=['type','date','time','meal','name','amount','unit','calories'];
+function csvCell(v){v=v==null?'':String(v);return/[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
+const toCsv=rows=>rows.map(r=>r.map(csvCell).join(',')).join('\r\n')+'\r\n';
+function parseCsv(text){
+ text=text.replace(/^﻿/,'');const rows=[];let row=[],cur='',q=false;
+ for(let i=0;i<text.length;i++){const c=text[i];
+  if(q){if(c==='"'){if(text[i+1]==='"'){cur+='"';i++;}else q=false;}else cur+=c;}
+  else if(c==='"')q=true;
+  else if(c===','){row.push(cur);cur='';}
+  else if(c==='\n'||c==='\r'){if(c==='\r'&&text[i+1]==='\n')i++;row.push(cur);cur='';if(row.some(x=>x.trim()!==''))rows.push(row);row=[];}
+  else cur+=c;}
+ row.push(cur);if(row.some(x=>x.trim()!==''))rows.push(row);return rows;
+}
+const normPer=s=>{s=String(s).toLowerCase().replace(/\s+/g,'');return/pack|pc|piece|serv|each|item/.test(s)?'pack':/100/.test(s)?'100g':'gram';};
+function buildCsv(){
+ const rows=[HEAD,['TARGET','','','','Default daily goal','','',db.target]];
+ Object.keys(db.dayTargets).sort().forEach(d=>rows.push(['DAY_TARGET',d,'','','Goal for this day','','',db.dayTargets[d]]));
+ [...db.foods].sort((a,b)=>a.name.localeCompare(b.name)).forEach(f=>rows.push(['FOOD','','','',f.name,'',f.per,f.cal]));
+ [...db.log].sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time)).forEach(e=>rows.push(['LOG',e.date,e.time,e.meal,e.food,e.amount,e.unit,Math.round(e.cal*100)/100]));
+ return toCsv(rows);
+}
+function importCsv(text){
+ const rows=parseCsv(text);if(rows.length<2)throw new Error('The file is empty.');
+ const h=rows[0].map(x=>x.trim().toLowerCase().replace(/[^a-z0-9]+/g,'_'));
+ if(!h.includes('name')&&!h.includes('food'))throw new Error('Not a Calorie Tracker file (no "name" column).');
+ const rep={target:0,dayTargets:0,fa:0,fu:0,la:0,ld:0,bad:0};
+ const seen=new Set(db.log.map(x=>[x.date,x.time,x.meal,x.food,x.amount].join('|')));
+ rows.slice(1).forEach(r=>{const o={};h.forEach((k,i)=>o[k]=(r[i]||'').trim());
+  const name=o.name||o.food||'',cal=o.calories??o.kcal??'';
+  let type=(o.type||'').toUpperCase();if(!type)type=o.date?'LOG':'FOOD';
+  if(type==='TARGET'){if(cal!==''&&!isNaN(num(cal))){db.target=num(cal);rep.target=1;}}
+  else if(type==='DAY_TARGET'){if(/^\d{4}-\d{2}-\d{2}$/.test(o.date)&&cal!==''){db.dayTargets[o.date]=num(cal);rep.dayTargets++;}}
+  else if(type==='FOOD'){if(!name||cal===''||isNaN(num(cal))){rep.bad++;return;}
+   const per=normPer(o.unit||o.per||o.basis||'gram'),ex=db.foods.find(x=>x.name.toLowerCase()===name.toLowerCase());
+   if(ex){ex.cal=num(cal);ex.per=per;rep.fu++;}else{db.foods.push({id:uid(),name,cal:num(cal),per});rep.fa++;}}
+  else if(type==='LOG'){const time=(o.time||'00:00').slice(0,5),meal=o.meal||'Meal',amount=num(o.amount);
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(o.date||'')||!name||cal===''||isNaN(num(cal))){rep.bad++;return;}
+   const key=[o.date,time,meal,name,amount].join('|');if(seen.has(key)){rep.ld++;return;}seen.add(key);
+   db.log.push({id:uid(),date:o.date,time,meal,food:name,amount,unit:/pack/i.test(o.unit||'')?'pack':'g',cal:num(cal)});rep.la++;}
+  else rep.bad++;});
+ save();return rep;
+}
+
+/* ---------- state / shell ---------- */
+const S={tab:'day',date:today(),q:'',editFood:null,meal:null,customMeal:false};
+const TABS=[['day','Today'],['foods','Foods'],['history','History'],['data','Backup']];
+function render(){
+ $('#tabs').innerHTML=TABS.map(([k,l])=>`<button data-tab="${k}" class="${S.tab===k?'on':''}">${ICON[k]}${k==='day'&&S.date!==today()?'Day':l}</button>`).join('');
+ $('#tgt').value=db.target;
+ ({day:pgDay,foods:pgFoods,history:pgHistory,data:pgData})[S.tab]($('#view'));
+}
+$('#tabs').addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(b){S.tab=b.dataset.tab;S.q='';render();window.scrollTo(0,0);}});
+$('#tgt').addEventListener('change',e=>{db.target=Math.max(0,num(e.target.value));save();render();toast('Default goal saved.');});
+
+/* ---------- Day page ---------- */
+function ringSvg(pct,over){const c=2*Math.PI*54;return`<svg class="ring" viewBox="0 0 128 128"><circle class="trk" cx="64" cy="64" r="54"/><circle class="val ${over?'over':''}" cx="64" cy="64" r="54" stroke-dasharray="${c}" stroke-dashoffset="${c*(1-Math.min(1,pct))}" transform="rotate(-90 64 64)"/></svg>`;}
+function pgDay(v){
+ const d=S.date,list=dayLog(d),tot=list.reduce((a,e)=>a+e.cal,0),tg=targetFor(d),rem=tg-tot,pct=tg>0?tot/tg:0;
+ const mealsUsed=[...new Set([...MEALS,...list.map(e=>e.meal)])].filter(m=>list.some(e=>e.meal===m));
+ const allMeals=[...new Set([...MEALS,...db.log.map(e=>e.meal)])];
+ if(!S.meal)S.meal=mealByHour();
+ const recent=[];[...db.log].reverse().forEach(e=>{if(recent.length<6&&!recent.includes(e.food)&&db.foods.some(f=>f.name===e.food))recent.push(e.food);});
+ v.innerHTML=`
+ <div class="dnav"><button class="btn round" id="prev" aria-label="Previous day">‹</button>
+  <div class="when"><b>${dayWord(d)}</b><span>${dayFull(d)}</span><input type="date" id="dpick" value="${d}" aria-label="Choose date"></div>
+  <button class="btn round" id="next" aria-label="Next day">›</button></div>
+ <div class="card"><div class="hero">
+   <div class="ringbox">${ringSvg(pct,rem<0)}<div class="ringtxt"><b>${r0(tot)}</b><span>kcal eaten</span></div></div>
+   <div style="width:100%"><div class="stats">
+    <div class="stat ${rem<0?'over':''}"><span>${rem<0?'Over by':'Remaining'}</span><b>${r0(Math.abs(rem))}</b></div>
+    <div class="stat"><span>Goal for ${d===today()?'today':'this day'}</span><input id="dt" type="number" min="0" value="${tg}" aria-label="Goal for this day"></div></div>
+    ${tot>0?`<div class="split">${mealsUsed.map(m=>{const k=list.filter(e=>e.meal===m).reduce((a,e)=>a+e.cal,0);return`<i style="width:${k/tot*100}%;background:${mealStyle(m)[1]}"></i>`;}).join('')}</div>
+    <div class="legend">${mealsUsed.map(m=>`<span><u style="background:${mealStyle(m)[1]}"></u>${esc(m)} ${r0(list.filter(e=>e.meal===m).reduce((a,e)=>a+e.cal,0))}</span>`).join('')}</div>`:'<div class="hint" style="margin-top:14px">Log your first meal below to see the breakdown.</div>'}
+   </div></div></div>
+ <div class="card"><h2>Add food</h2>
+  <datalist id="fl">${db.foods.map(f=>`<option value="${esc(f.name)}">`).join('')}</datalist>
+  ${db.foods.length?'':'<div class="hint" style="margin-bottom:12px">Your food database is empty — add foods in the <b>Foods</b> tab, or load a CSV in <b>Backup</b>.</div>'}
+  ${recent.length?`<div class="chips" style="margin-bottom:14px">${recent.map(n=>`<button class="chip recent" data-rc="${esc(n)}">${esc(n)}</button>`).join('')}</div>`:''}
+  <div class="grid">
+   <div class="c2"><label>Food</label><input id="a-food" list="fl" placeholder="Search your foods…" autocomplete="off"></div>
+   <div><label id="a-ul">Amount</label><input id="a-amt" type="number" step="any" min="0" inputmode="decimal" placeholder="0"></div>
+   <div><label>&nbsp;</label><div class="livebox" id="a-live">—</div></div>
+   <div class="c4"><label>Meal</label><div class="chips" id="mealchips">${allMeals.map(m=>`<button class="chip ${!S.customMeal&&S.meal===m?'on':''}" data-meal="${esc(m)}">${mealStyle(m)[0]} ${esc(m)}</button>`).join('')}<button class="chip ${S.customMeal?'on':''}" data-meal="__other">＋ Other</button></div>
+    <input id="a-custom" placeholder="Type a meal name (e.g. Pre-workout)" style="margin-top:10px;${S.customMeal?'':'display:none'}" value="${S.customMeal?esc(S.meal):''}"></div>
+   <div class="c2"><label>Date</label><input id="a-date" type="date" value="${d}"></div>
+   <div class="c2"><label>Time</label><input id="a-time" type="time" value="${nowT()}"></div>
+  </div>
+  <div class="addrow"><button class="btn pri" id="a-add" style="flex:1;padding:14px">Add to log</button></div>
+ </div>
+ ${list.length?mealsUsed.map(m=>{const es=list.filter(e=>e.meal===m),[ic,col]=mealStyle(m);return`<div class="card"><div class="mhead"><div class="ic" style="background:${col}22">${ic}</div><b>${esc(m)}</b><span>${r0(es.reduce((a,e)=>a+e.cal,0))} kcal</span></div>
+  ${es.map(e=>`<div class="entry"><div class="t">${esc(e.time)}</div><div class="n"><div>${esc(e.food)}</div><div class="hint">${r1(e.amount)} ${e.unit==='pack'?(e.amount==1?'pack':'packs'):'g'}</div></div><div class="k">${r0(e.cal)}</div><button class="x" data-del="${e.id}" aria-label="Remove">${ICON.del}</button></div>`).join('')}</div>`;}).join('')
+ :`<div class="card empty"><b>🍽️</b>Nothing logged for ${dayWord(d).toLowerCase()} yet.</div>`}`;
+ const go=s=>{if(!s)s=today();S.date=s;render();};
+ $('#prev').onclick=()=>go(shift(d,-1));$('#next').onclick=()=>go(shift(d,1));
+ $('#dpick').onchange=e=>go(e.target.value);
+ $('#dt').onchange=e=>{const n=Math.max(0,num(e.target.value));if(n===db.target)delete db.dayTargets[d];else db.dayTargets[d]=n;save();render();};
+ const find=()=>{const n=$('#a-food').value.trim().toLowerCase();return db.foods.find(f=>f.name.toLowerCase()===n);};
+ const live=()=>{const f=find(),a=num($('#a-amt').value);
+  $('#a-ul').textContent=f?(f.per==='pack'?'Packs':'Grams'):'Amount';
+  $('#a-live').textContent=f&&a>0?r0(calcCal(f,a))+' kcal':f?r1(f.cal)+' kcal '+SHORT[f.per]:'—';};
+ $('#a-food').oninput=live;$('#a-amt').oninput=live;
+ v.querySelectorAll('[data-rc]').forEach(b=>b.onclick=()=>{$('#a-food').value=b.dataset.rc;live();$('#a-amt').focus();});
+ $('#mealchips').onclick=e=>{const b=e.target.closest('[data-meal]');if(!b)return;
+  v.querySelectorAll('[data-meal]').forEach(x=>x.classList.toggle('on',x===b));
+  if(b.dataset.meal==='__other'){S.customMeal=true;S.meal=$('#a-custom').value;$('#a-custom').style.display='';$('#a-custom').focus();}
+  else{S.customMeal=false;S.meal=b.dataset.meal;$('#a-custom').style.display='none';}};
+ $('#a-custom').oninput=e=>{S.meal=e.target.value;};
+ $('#a-add').onclick=()=>{const f=find(),a=num($('#a-amt').value),meal=(S.customMeal?$('#a-custom').value:S.meal).trim(),date=$('#a-date').value,time=$('#a-time').value;
+  if(!f)return toast('Pick a food from your database.');if(a<=0)return toast('Enter an amount.');if(!meal)return toast('Choose or type a meal.');if(!date||!time)return toast('Date and time are required.');
+  db.log.push({id:uid(),date,time,meal,food:f.name,amount:a,unit:unitOf(f),cal:calcCal(f,a)});save();S.date=date;render();toast('Added '+f.name+' · '+r0(calcCal(f,a))+' kcal');};
+ v.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{db.log=db.log.filter(e=>e.id!==b.dataset.del);save();render();});
+}
+
+/* ---------- Foods page ---------- */
+function pgFoods(v){
+ const ed=S.editFood&&db.foods.find(f=>f.id===S.editFood),per=ed?ed.per:'gram';
+ v.innerHTML=`<div class="card"><h2>${ed?'Edit food':'New food'}</h2>
+  <div class="grid"><div class="c2"><label>Food name</label><input id="f-name" value="${esc(ed?ed.name:'')}" placeholder="e.g. Cooked rice"></div>
+   <div class="c2"><label>Calories (kcal)</label><input id="f-cal" type="number" step="any" min="0" inputmode="decimal" value="${ed?ed.cal:''}" placeholder="e.g. 1.3"></div>
+   <div class="c4"><label>Those calories are…</label><div class="seg" id="f-seg">${[['gram','per gram'],['100g','per 100 g'],['pack','per pack']].map(([k,l])=>`<label class="${per===k?'on':''}"><input type="radio" name="per" value="${k}" ${per===k?'checked':''}>${l}</label>`).join('')}</div></div></div>
+  <div class="row" style="margin-top:14px"><button class="btn pri grow" id="f-save">${ed?'Save changes':'Add food'}</button>${ed?'<button class="btn" id="f-cancel">Cancel</button>':''}</div>
+  <div class="hint" style="margin-top:10px">Rice = 1.3 per gram · Chicken = 165 per 100 g · Instant noodles = 350 per pack. When you log a food you enter grams or packs and the calories are worked out for you.</div></div>
+ <div class="card"><div class="row" style="margin-bottom:6px"><h2 style="margin:0" class="grow">${db.foods.length} food${db.foods.length===1?'':'s'}</h2></div>
+  <input id="f-q" placeholder="Search foods…" value="${esc(S.q)}" style="margin-bottom:6px"><div id="f-list"></div></div>`;
+ const fill=()=>{const q=S.q.toLowerCase(),rows=db.foods.filter(f=>!q||f.name.toLowerCase().includes(q)).sort((a,b)=>a.name.localeCompare(b.name));
+  $('#f-list').innerHTML=rows.length?rows.map(f=>`<div class="food"><div class="av">${esc(f.name.charAt(0).toUpperCase())}</div><div class="n"><b>${esc(f.name)}</b><span class="hint">${PER[f.per]}</span></div><span class="pill">${r1(f.cal)} kcal ${SHORT[f.per]}</span><button class="btn sm" data-ed="${f.id}">Edit</button><button class="x" data-rm="${f.id}" aria-label="Delete">${ICON.del}</button></div>`).join(''):'<div class="empty"><b>🥕</b>No foods yet.</div>';
+  $('#f-list').querySelectorAll('[data-ed]').forEach(b=>b.onclick=()=>{S.editFood=b.dataset.ed;render();window.scrollTo(0,0);});
+  $('#f-list').querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{const f=db.foods.find(x=>x.id===b.dataset.rm);if(!confirm('Delete "'+f.name+'"? Past log entries are kept.'))return;db.foods=db.foods.filter(x=>x.id!==f.id);if(S.editFood===f.id)S.editFood=null;save();render();});};
+ fill();$('#f-q').oninput=e=>{S.q=e.target.value;fill();};
+ $('#f-seg').onchange=()=>v.querySelectorAll('#f-seg label').forEach(l=>l.classList.toggle('on',l.querySelector('input').checked));
+ $('#f-save').onclick=()=>{const name=$('#f-name').value.trim(),raw=$('#f-cal').value.trim(),cal=num(raw),p=v.querySelector('input[name=per]:checked').value;
+  if(!name)return toast('Food name is required.');if(raw===''||cal<0)return toast('Enter the calories.');
+  if(db.foods.some(f=>f.name.toLowerCase()===name.toLowerCase()&&(!ed||f.id!==ed.id)))return toast('That food already exists.');
+  if(ed)Object.assign(ed,{name,cal,per:p});else db.foods.push({id:uid(),name,cal,per:p});
+  S.editFood=null;save();render();toast('Saved.');};
+ if($('#f-cancel'))$('#f-cancel').onclick=()=>{S.editFood=null;render();};
+ ['f-name','f-cal'].forEach(i=>$('#'+i).addEventListener('keydown',e=>{if(e.key==='Enter')$('#f-save').click();}));
+}
+
+/* ---------- History page ---------- */
+function pgHistory(v){
+ const days=[...new Set(db.log.map(e=>e.date))].sort().reverse();
+ const span=[];for(let i=13;i>=0;i--)span.push(shift(today(),-i));
+ const vals=span.map(d=>dayTotal(d)),tgs=span.map(targetFor),mx=Math.max(1,...vals,...tgs)*1.12;
+ const logged=days.filter(d=>span.includes(d)),avg=logged.length?logged.reduce((a,d)=>a+dayTotal(d),0)/logged.length:0,onT=days.filter(d=>dayTotal(d)<=targetFor(d)).length;
+ const W=600,H=190,bw=W/14;
+ v.innerHTML=`<div class="kpis"><div class="stat"><span>Average / day</span><b>${r0(avg)}</b></div><div class="stat"><span>Days logged</span><b>${days.length}</b></div><div class="stat"><span>Within goal</span><b>${onT}</b></div></div>
+ <div class="card"><h2>Last 14 days</h2><svg class="chart" viewBox="0 0 ${W} ${H+22}" width="100%">
+  ${span.map((d,i)=>{const h=vals[i]/mx*H,x=i*bw+bw*.18,w=bw*.64,over=vals[i]>tgs[i],ty=H-tgs[i]/mx*H;
+   return`<rect x="${x}" y="${H-h}" width="${w}" height="${Math.max(h,vals[i]>0?3:0)}" rx="6" fill="${over?'var(--warn)':'var(--acc)'}" opacity="${vals[i]?1:.15}"/><rect x="${x-3}" y="${ty-1.5}" width="${w+6}" height="3" rx="1.5" fill="var(--ink)" opacity=".45"/><text x="${i*bw+bw/2}" y="${H+15}" text-anchor="middle">${toDate(d).getDate()}</text>`;}).join('')}</svg>
+  <div class="legend"><span><u style="background:var(--acc)"></u>Within goal</span><span><u style="background:var(--warn)"></u>Over goal</span><span><u style="background:var(--ink);opacity:.45;border-radius:2px;height:3px;width:12px"></u>Goal</span></div></div>
+ <div class="card"><h2>Day by day</h2>${days.length?days.map(d=>{const t=dayTotal(d),tg=targetFor(d),df=t-tg;return`<div class="hrow" data-d="${d}"><div class="d"><b>${dayWord(d)}</b><div class="hint">${dayFull(d)}</div></div><div class="mini ${df>0?'over':''}"><i style="width:${tg>0?Math.min(100,t/tg*100):0}%"></i></div><div style="width:80px;text-align:right"><b>${r0(t)}</b><div class="hint">of ${r0(tg)}</div></div><div class="diff ${df>0?'over':'ok'}">${df>0?'+':''}${r0(df)}</div></div>`;}).join(''):'<div class="empty"><b>📈</b>No history yet.</div>'}</div>`;
+ v.querySelectorAll('[data-d]').forEach(r=>r.onclick=()=>{S.date=r.dataset.d;S.tab='day';render();window.scrollTo(0,0);});
+}
+
+/* ---------- Backup page (single CSV) ---------- */
+function pgData(v){
+ v.innerHTML=`<div class="card"><h2>Your data · one CSV file</h2>
+  <p style="margin:0 0 14px">Everything lives in a single file: your <b>food database</b>, your <b>daily log</b> (day by day, with meal and time) and your <b>goals</b>. Open it in Excel or Google Sheets, or load it on another device.</p>
+  <div class="row" style="margin-bottom:14px"><span class="pill">${db.foods.length} foods</span><span class="pill">${db.log.length} entries</span><span class="pill">${new Set(db.log.map(e=>e.date)).size} days</span></div>
+  <button class="btn pri" id="exp" style="width:100%;padding:14px">⬇ Download CSV</button>
+  <div style="height:12px"></div>
+  <div class="drop" id="drop"><b>⬆ Load CSV</b>Click to choose a file, or drop it here<br><span class="hint">Adds to what you have: foods with the same name are updated, duplicate log rows are skipped.</span></div></div>
+ <div class="card"><h2>How the file looks</h2>
+  <div class="scrollx"><table class="tbl"><thead><tr>${HEAD.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>
+  <tr><td>TARGET</td><td></td><td></td><td></td><td>Default daily goal</td><td></td><td></td><td>2000</td></tr>
+  <tr><td>FOOD</td><td></td><td></td><td></td><td>Cooked rice</td><td></td><td>gram</td><td>1.3</td></tr>
+  <tr><td>FOOD</td><td></td><td></td><td></td><td>Instant noodles</td><td></td><td>pack</td><td>350</td></tr>
+  <tr><td>LOG</td><td>2026-11-13</td><td>12:30</td><td>Lunch</td><td>Cooked rice</td><td>200</td><td>g</td><td>260</td></tr></tbody></table></div>
+  <p class="hint" style="margin-bottom:0">FOOD rows: <i>unit</i> is <code>gram</code>, <code>100g</code> or <code>pack</code> and <i>calories</i> is per that unit. LOG rows: <i>amount</i> is grams or packs and <i>calories</i> is the total. You can type your whole food list in Excel as FOOD rows and load it.</p></div>
+ <div class="card"><h2>Reset</h2><button class="btn bad" id="clr">Erase everything in this browser</button>
+  <div class="hint" style="margin-top:10px">Data is saved automatically in this browser. Download the CSV regularly as your backup.</div></div>`;
+ $('#exp').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+buildCsv()],{type:'text/csv;charset=utf-8'}));a.download='calorie-tracker-'+today()+'.csv';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1500);toast('CSV downloaded.');};
+ const dz=$('#drop');dz.onclick=()=>$('#fileIn').click();
+ dz.ondragover=e=>{e.preventDefault();dz.classList.add('hot');};dz.ondragleave=()=>dz.classList.remove('hot');
+ dz.ondrop=e=>{e.preventDefault();dz.classList.remove('hot');if(e.dataTransfer.files[0])loadFile(e.dataTransfer.files[0]);};
+ $('#clr').onclick=()=>{if(confirm('Erase ALL foods, logs and goals? Download the CSV first if you want a copy.')&&confirm('Really erase everything?')){db=fresh();save();render();}};
+}
+async function loadFile(f){try{const r=importCsv(await f.text());render();
+ toast(`Loaded: ${r.fa+r.fu} foods, ${r.la} log entries${r.ld?` (${r.ld} duplicates skipped)`:''}${r.bad?`, ${r.bad} rows skipped`:''}.`);}catch(err){alert('Could not load the file: '+err.message);}}
+$('#fileIn').addEventListener('change',e=>{const f=e.target.files[0];e.target.value='';if(f)loadFile(f);});
+
+render();
+</script>
+</body>
+</html>
