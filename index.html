@@ -26,8 +26,19 @@ svg{display:block}
 .top h1{font-size:20px;margin:0;letter-spacing:-.02em;flex:1}
 .goal{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:5px 6px 5px 14px;box-shadow:var(--shadow);font-size:13px;color:var(--mute)}
 .top h1{white-space:nowrap}
+.top{flex-wrap:wrap}
+.goals{display:flex;gap:8px;flex-wrap:wrap}
 .goal{padding-right:14px;white-space:nowrap}
-@media(max-width:480px){.hsm{display:none}.top h1{font-size:18px}}
+@media(max-width:560px){.hsm{display:none}.top h1{font-size:18px}.goals{width:100%}.goal{flex:1;justify-content:space-between}}
+:root{--pro:#3b82f6}
+@media(prefers-color-scheme:dark){:root{--pro:#60a5fa}}
+.pbar{height:6px;background:var(--line);border-radius:99px;margin-top:6px;overflow:hidden}
+.pbar i{display:block;height:100%;background:var(--pro);border-radius:99px;transition:width .5s}
+.stat small{font-size:13px;font-weight:600;color:var(--mute);letter-spacing:0}
+.proc{color:var(--pro);font-weight:700}
+.livebox{flex-direction:column;align-items:flex-start;justify-content:center;line-height:1.2;padding:7px 14px}
+.livebox small{font-size:12px;font-weight:600;color:var(--pro)}
+.entry .k{text-align:right}
 .goal input{width:70px;border:0;background:var(--surface2);border-radius:99px;padding:6px 10px;text-align:right;font-weight:700;color:var(--ink)}
 /* tabs */
 .tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);padding:5px;border-radius:99px;box-shadow:var(--shadow);margin-bottom:18px}
@@ -126,7 +137,7 @@ input:focus,select:focus{outline:none;border-color:var(--acc);background:var(--s
 .food .n{flex:1;min-width:0}.food .n b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pill{background:var(--surface2);border-radius:99px;padding:4px 11px;font-size:12.5px;font-weight:600;white-space:nowrap}
 /* history */
-.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:14px}
 .kpis .stat b{font-size:24px}
 .chart text{fill:var(--mute);font-size:10px}
 .hrow{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line);cursor:pointer}
@@ -154,7 +165,8 @@ input:focus,select:focus{outline:none;border-color:var(--acc);background:var(--s
 <body>
 <div class="app">
  <div class="top"><div class="logo">🥗</div><h1>Calorie Tracker</h1>
-  <label class="goal"><span><span class="hsm">Default </span>goal</span> <input id="tgt" type="number" min="0" step="1" aria-label="Default daily goal in kcal"> kcal</label></div>
+  <div class="goals"><label class="goal"><span><span class="hsm">Default </span>goal</span> <input id="tgt" type="number" min="0" step="1" aria-label="Default daily goal in kcal"> kcal</label>
+  <label class="goal"><span>Protein</span> <input id="ptgt" type="number" min="0" step="1" aria-label="Default daily protein goal in grams"> g</label></div></div>
  <nav class="tabs" id="tabs"></nav>
  <div id="view"></div>
 </div>
@@ -192,19 +204,23 @@ const ICON={
 
 /* ---------- data ---------- */
 const KEY='calorie_tracker_v2';
-const fresh=()=>({foods:[],log:[],target:2000,dayTargets:{}});
+const fresh=()=>({foods:[],log:[],target:2000,dayTargets:{},proteinTarget:100,dayProtein:{}});
 let db=(()=>{try{const d=JSON.parse(localStorage.getItem(KEY)||localStorage.getItem('calorie_tracker_v1'));if(d&&d.foods&&d.log)return Object.assign(fresh(),d);}catch(e){}return fresh();})();
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(db));}catch(e){toast('Could not auto-save here — please export your CSV.');}};
 const PER={gram:'per gram','100g':'per 100 g',pack:'per pack'};
 const SHORT={gram:'/ g','100g':'/ 100 g',pack:'/ pack'};
 const unitOf=f=>f.per==='pack'?'pack':'g';
 const calcCal=(f,a)=>{a=num(a);return f.per==='100g'?f.cal*a/100:f.cal*a;};
+const calcPro=(f,a)=>{a=num(a);const p=num(f.protein);return f.per==='100g'?p*a/100:p*a;};
+const rp=n=>Number(num(n).toFixed(1)).toLocaleString('en-US');
 const targetFor=d=>db.dayTargets[d]!=null?db.dayTargets[d]:db.target;
+const proFor=d=>db.dayProtein[d]!=null?db.dayProtein[d]:db.proteinTarget;
 const dayLog=d=>db.log.filter(e=>e.date===d).sort((a,b)=>a.time.localeCompare(b.time));
 const dayTotal=d=>db.log.filter(e=>e.date===d).reduce((a,e)=>a+e.cal,0);
+const dayPro=d=>db.log.filter(e=>e.date===d).reduce((a,e)=>a+num(e.protein),0);
 
 /* ---------- the ONE csv ---------- */
-const HEAD=['type','date','time','meal','name','amount','unit','calories'];
+const HEAD=['type','date','time','meal','name','amount','unit','calories','protein'];
 function csvCell(v){v=v==null?'':String(v);return/[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
 const toCsv=rows=>rows.map(r=>r.map(csvCell).join(',')).join('\r\n')+'\r\n';
 function parseCsv(text){
@@ -219,10 +235,10 @@ function parseCsv(text){
 }
 const normPer=s=>{s=String(s).toLowerCase().replace(/\s+/g,'');return/pack|pc|piece|serv|each|item/.test(s)?'pack':/100/.test(s)?'100g':'gram';};
 function buildCsv(){
- const rows=[HEAD,['TARGET','','','','Default daily goal','','',db.target]];
- Object.keys(db.dayTargets).sort().forEach(d=>rows.push(['DAY_TARGET',d,'','','Goal for this day','','',db.dayTargets[d]]));
- [...db.foods].sort((a,b)=>a.name.localeCompare(b.name)).forEach(f=>rows.push(['FOOD','','','',f.name,'',f.per,f.cal]));
- [...db.log].sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time)).forEach(e=>rows.push(['LOG',e.date,e.time,e.meal,e.food,e.amount,e.unit,Math.round(e.cal*100)/100]));
+ const rows=[HEAD,['TARGET','','','','Default daily goal','','',db.target,db.proteinTarget]];
+ [...new Set([...Object.keys(db.dayTargets),...Object.keys(db.dayProtein)])].sort().forEach(d=>rows.push(['DAY_TARGET',d,'','','Goal for this day','','',db.dayTargets[d]!=null?db.dayTargets[d]:'',db.dayProtein[d]!=null?db.dayProtein[d]:'']));
+ [...db.foods].sort((a,b)=>a.name.localeCompare(b.name)).forEach(f=>rows.push(['FOOD','','','',f.name,'',f.per,f.cal,num(f.protein)]));
+ [...db.log].sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time)).forEach(e=>rows.push(['LOG',e.date,e.time,e.meal,e.food,e.amount,e.unit,Math.round(e.cal*100)/100,Math.round(num(e.protein)*100)/100]));
  return toCsv(rows);
 }
 function importCsv(text){
@@ -234,15 +250,16 @@ function importCsv(text){
  rows.slice(1).forEach(r=>{const o={};h.forEach((k,i)=>o[k]=(r[i]||'').trim());
   const name=o.name||o.food||'',cal=o.calories??o.kcal??'';
   let type=(o.type||'').toUpperCase();if(!type)type=o.date?'LOG':'FOOD';
-  if(type==='TARGET'){if(cal!==''&&!isNaN(num(cal))){db.target=num(cal);rep.target=1;}}
-  else if(type==='DAY_TARGET'){if(/^\d{4}-\d{2}-\d{2}$/.test(o.date)&&cal!==''){db.dayTargets[o.date]=num(cal);rep.dayTargets++;}}
+  const hasP=o.protein!==undefined&&o.protein!==''&&!isNaN(num(o.protein));
+  if(type==='TARGET'){if(cal!==''&&!isNaN(num(cal))){db.target=num(cal);rep.target=1;}if(hasP)db.proteinTarget=num(o.protein);}
+  else if(type==='DAY_TARGET'){if(/^\d{4}-\d{2}-\d{2}$/.test(o.date)){if(cal!=='')db.dayTargets[o.date]=num(cal);if(hasP)db.dayProtein[o.date]=num(o.protein);rep.dayTargets++;}}
   else if(type==='FOOD'){if(!name||cal===''||isNaN(num(cal))){rep.bad++;return;}
    const per=normPer(o.unit||o.per||o.basis||'gram'),ex=db.foods.find(x=>x.name.toLowerCase()===name.toLowerCase());
-   if(ex){ex.cal=num(cal);ex.per=per;rep.fu++;}else{db.foods.push({id:uid(),name,cal:num(cal),per});rep.fa++;}}
+   if(ex){ex.cal=num(cal);ex.per=per;if(hasP)ex.protein=num(o.protein);rep.fu++;}else{db.foods.push({id:uid(),name,cal:num(cal),protein:hasP?num(o.protein):0,per});rep.fa++;}}
   else if(type==='LOG'){const time=(o.time||'00:00').slice(0,5),meal=o.meal||'Meal',amount=num(o.amount);
    if(!/^\d{4}-\d{2}-\d{2}$/.test(o.date||'')||!name||cal===''||isNaN(num(cal))){rep.bad++;return;}
    const key=[o.date,time,meal,name,amount].join('|');if(seen.has(key)){rep.ld++;return;}seen.add(key);
-   db.log.push({id:uid(),date:o.date,time,meal,food:name,amount,unit:/pack/i.test(o.unit||'')?'pack':'g',cal:num(cal)});rep.la++;}
+   db.log.push({id:uid(),date:o.date,time,meal,food:name,amount,unit:/pack/i.test(o.unit||'')?'pack':'g',cal:num(cal),protein:hasP?num(o.protein):0});rep.la++;}
   else rep.bad++;});
  save();return rep;
 }
@@ -252,16 +269,18 @@ const S={tab:'day',date:today(),q:'',editFood:null,meal:null,customMeal:false};
 const TABS=[['day','Today'],['foods','Foods'],['history','History'],['data','Backup']];
 function render(){
  $('#tabs').innerHTML=TABS.map(([k,l])=>`<button data-tab="${k}" class="${S.tab===k?'on':''}">${ICON[k]}${k==='day'&&S.date!==today()?'Day':l}</button>`).join('');
- $('#tgt').value=db.target;
+ $('#tgt').value=db.target;$('#ptgt').value=db.proteinTarget;
  ({day:pgDay,foods:pgFoods,history:pgHistory,data:pgData})[S.tab]($('#view'));
 }
 $('#tabs').addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(b){S.tab=b.dataset.tab;S.q='';render();window.scrollTo(0,0);}});
-$('#tgt').addEventListener('change',e=>{db.target=Math.max(0,num(e.target.value));save();render();toast('Default goal saved.');});
+$('#tgt').addEventListener('change',e=>{db.target=Math.max(0,num(e.target.value));save();render();toast('Default calorie goal saved.');});
+$('#ptgt').addEventListener('change',e=>{db.proteinTarget=Math.max(0,num(e.target.value));save();render();toast('Default protein goal saved.');});
 
 /* ---------- Day page ---------- */
 function ringSvg(pct,over){const c=2*Math.PI*54;return`<svg class="ring" viewBox="0 0 128 128"><circle class="trk" cx="64" cy="64" r="54"/><circle class="val ${over?'over':''}" cx="64" cy="64" r="54" stroke-dasharray="${c}" stroke-dashoffset="${c*(1-Math.min(1,pct))}" transform="rotate(-90 64 64)"/></svg>`;}
 function pgDay(v){
  const d=S.date,list=dayLog(d),tot=list.reduce((a,e)=>a+e.cal,0),tg=targetFor(d),rem=tg-tot,pct=tg>0?tot/tg:0;
+ const totP=list.reduce((a,e)=>a+num(e.protein),0),pg=proFor(d),pPct=pg>0?Math.min(100,totP/pg*100):0;
  const mealsUsed=[...new Set([...MEALS,...list.map(e=>e.meal)])].filter(m=>list.some(e=>e.meal===m));
  const allMeals=[...new Set([...MEALS,...db.log.map(e=>e.meal)])];
  if(!S.meal)S.meal=mealByHour();
@@ -274,7 +293,9 @@ function pgDay(v){
    <div class="ringbox">${ringSvg(pct,rem<0)}<div class="ringtxt"><b>${r0(tot)}</b><span>kcal eaten</span></div></div>
    <div style="width:100%"><div class="stats">
     <div class="stat ${rem<0?'over':''}"><span>${rem<0?'Over by':'Remaining'}</span><b>${r0(Math.abs(rem))}</b></div>
-    <div class="stat"><span>Goal for ${d===today()?'today':'this day'}</span><input id="dt" type="number" min="0" value="${tg}" aria-label="Goal for this day"></div></div>
+    <div class="stat"><span>Calorie goal</span><input id="dt" type="number" min="0" value="${tg}" aria-label="Calorie goal for this day"></div>
+    <div class="stat"><span>Protein</span><b>${rp(totP)} <small>g eaten</small></b><div class="pbar"><i style="width:${pPct}%"></i></div></div>
+    <div class="stat"><span>Protein goal (g)</span><input id="dp" type="number" min="0" value="${pg}" aria-label="Protein goal for this day"></div></div>
     ${tot>0?`<div class="split">${mealsUsed.map(m=>{const k=list.filter(e=>e.meal===m).reduce((a,e)=>a+e.cal,0);return`<i style="width:${k/tot*100}%;background:${mealStyle(m)[1]}"></i>`;}).join('')}</div>
     <div class="legend">${mealsUsed.map(m=>`<span><u style="background:${mealStyle(m)[1]}"></u>${esc(m)} ${r0(list.filter(e=>e.meal===m).reduce((a,e)=>a+e.cal,0))}</span>`).join('')}</div>`:'<div class="hint" style="margin-top:14px">Log your first meal below to see the breakdown.</div>'}
    </div></div></div>
@@ -293,17 +314,18 @@ function pgDay(v){
   </div>
   <div class="addrow"><button class="btn pri" id="a-add" style="flex:1;padding:14px">Add to log</button></div>
  </div>
- ${list.length?mealsUsed.map(m=>{const es=list.filter(e=>e.meal===m),[ic,col]=mealStyle(m);return`<div class="card"><div class="mhead"><div class="ic" style="background:${col}22">${ic}</div><b>${esc(m)}</b><span>${r0(es.reduce((a,e)=>a+e.cal,0))} kcal</span></div>
-  ${es.map(e=>`<div class="entry"><div class="t">${esc(e.time)}</div><div class="n"><div>${esc(e.food)}</div><div class="hint">${r1(e.amount)} ${e.unit==='pack'?(e.amount==1?'pack':'packs'):'g'}</div></div><div class="k">${r0(e.cal)}</div><button class="x" data-del="${e.id}" aria-label="Remove">${ICON.del}</button></div>`).join('')}</div>`;}).join('')
+ ${list.length?mealsUsed.map(m=>{const es=list.filter(e=>e.meal===m),[ic,col]=mealStyle(m);return`<div class="card"><div class="mhead"><div class="ic" style="background:${col}22">${ic}</div><b>${esc(m)}</b><span>${r0(es.reduce((a,e)=>a+e.cal,0))} kcal <span class="proc" style="margin-left:6px">${rp(es.reduce((a,e)=>a+num(e.protein),0))} g</span></span></div>
+  ${es.map(e=>`<div class="entry"><div class="t">${esc(e.time)}</div><div class="n"><div>${esc(e.food)}</div><div class="hint">${r1(e.amount)} ${e.unit==='pack'?(e.amount==1?'pack':'packs'):'g'}</div></div><div class="k">${r0(e.cal)}<div class="hint proc">${rp(e.protein)} g protein</div></div><button class="x" data-del="${e.id}" aria-label="Remove">${ICON.del}</button></div>`).join('')}</div>`;}).join('')
  :`<div class="card empty"><b>🍽️</b>Nothing logged for ${dayWord(d).toLowerCase()} yet.</div>`}`;
  const go=s=>{if(!s)s=today();S.date=s;render();};
  $('#prev').onclick=()=>go(shift(d,-1));$('#next').onclick=()=>go(shift(d,1));
  $('#dpick').onchange=e=>go(e.target.value);
  $('#dt').onchange=e=>{const n=Math.max(0,num(e.target.value));if(n===db.target)delete db.dayTargets[d];else db.dayTargets[d]=n;save();render();};
+ $('#dp').onchange=e=>{const n=Math.max(0,num(e.target.value));if(n===db.proteinTarget)delete db.dayProtein[d];else db.dayProtein[d]=n;save();render();};
  const find=()=>{const n=$('#a-food').value.trim().toLowerCase();return db.foods.find(f=>f.name.toLowerCase()===n);};
  const live=()=>{const f=find(),a=num($('#a-amt').value);
   $('#a-ul').textContent=f?(f.per==='pack'?'Packs':'Grams'):'Amount';
-  $('#a-live').textContent=f&&a>0?r0(calcCal(f,a))+' kcal':f?r1(f.cal)+' kcal '+SHORT[f.per]:'—';};
+  $('#a-live').innerHTML=f&&a>0?`${r0(calcCal(f,a))} kcal<small>${rp(calcPro(f,a))} g protein</small>`:f?`${r1(f.cal)} kcal ${SHORT[f.per]}<small>${rp(f.protein)} g protein ${SHORT[f.per]}</small>`:'—';};
  $('#a-food').oninput=live;$('#a-amt').oninput=live;
  v.querySelectorAll('[data-rc]').forEach(b=>b.onclick=()=>{$('#a-food').value=b.dataset.rc;live();$('#a-amt').focus();});
  $('#mealchips').onclick=e=>{const b=e.target.closest('[data-meal]');if(!b)return;
@@ -313,7 +335,7 @@ function pgDay(v){
  $('#a-custom').oninput=e=>{S.meal=e.target.value;};
  $('#a-add').onclick=()=>{const f=find(),a=num($('#a-amt').value),meal=(S.customMeal?$('#a-custom').value:S.meal).trim(),date=$('#a-date').value,time=$('#a-time').value;
   if(!f)return toast('Pick a food from your database.');if(a<=0)return toast('Enter an amount.');if(!meal)return toast('Choose or type a meal.');if(!date||!time)return toast('Date and time are required.');
-  db.log.push({id:uid(),date,time,meal,food:f.name,amount:a,unit:unitOf(f),cal:calcCal(f,a)});save();S.date=date;render();toast('Added '+f.name+' · '+r0(calcCal(f,a))+' kcal');};
+  db.log.push({id:uid(),date,time,meal,food:f.name,amount:a,unit:unitOf(f),cal:calcCal(f,a),protein:calcPro(f,a)});save();S.date=date;render();toast('Added '+f.name+' · '+r0(calcCal(f,a))+' kcal · '+rp(calcPro(f,a))+' g protein');};
  v.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{db.log=db.log.filter(e=>e.id!==b.dataset.del);save();render();});
 }
 
@@ -322,25 +344,26 @@ function pgFoods(v){
  const ed=S.editFood&&db.foods.find(f=>f.id===S.editFood),per=ed?ed.per:'gram';
  v.innerHTML=`<div class="card"><h2>${ed?'Edit food':'New food'}</h2>
   <div class="grid"><div class="c2"><label>Food name</label><input id="f-name" value="${esc(ed?ed.name:'')}" placeholder="e.g. Cooked rice"></div>
-   <div class="c2"><label>Calories (kcal)</label><input id="f-cal" type="number" step="any" min="0" inputmode="decimal" value="${ed?ed.cal:''}" placeholder="e.g. 1.3"></div>
-   <div class="c4"><label>Those calories are…</label><div class="seg" id="f-seg">${[['gram','per gram'],['100g','per 100 g'],['pack','per pack']].map(([k,l])=>`<label class="${per===k?'on':''}"><input type="radio" name="per" value="${k}" ${per===k?'checked':''}>${l}</label>`).join('')}</div></div></div>
+   <div><label>Calories (kcal)</label><input id="f-cal" type="number" step="any" min="0" inputmode="decimal" value="${ed?ed.cal:''}" placeholder="e.g. 1.3"></div>
+   <div><label>Protein (g)</label><input id="f-pro" type="number" step="any" min="0" inputmode="decimal" value="${ed&&ed.protein?ed.protein:''}" placeholder="e.g. 0.03"></div>
+   <div class="c4"><label>Those calories and protein are…</label><div class="seg" id="f-seg">${[['gram','per gram'],['100g','per 100 g'],['pack','per pack']].map(([k,l])=>`<label class="${per===k?'on':''}"><input type="radio" name="per" value="${k}" ${per===k?'checked':''}>${l}</label>`).join('')}</div></div></div>
   <div class="row" style="margin-top:14px"><button class="btn pri grow" id="f-save">${ed?'Save changes':'Add food'}</button>${ed?'<button class="btn" id="f-cancel">Cancel</button>':''}</div>
-  <div class="hint" style="margin-top:10px">Rice = 1.3 per gram · Chicken = 165 per 100 g · Instant noodles = 350 per pack. When you log a food you enter grams or packs and the calories are worked out for you.</div></div>
+  <div class="hint" style="margin-top:10px">Rice = 1.3 kcal &amp; 0.027 g protein per gram · Chicken = 165 kcal &amp; 31 g protein per 100 g · Instant noodles = 350 kcal &amp; 8 g protein per pack. When you log a food you enter grams or packs and the calories and protein are worked out for you. Protein is optional.</div></div>
  <div class="card"><div class="row" style="margin-bottom:6px"><h2 style="margin:0" class="grow">${db.foods.length} food${db.foods.length===1?'':'s'}</h2></div>
   <input id="f-q" placeholder="Search foods…" value="${esc(S.q)}" style="margin-bottom:6px"><div id="f-list"></div></div>`;
  const fill=()=>{const q=S.q.toLowerCase(),rows=db.foods.filter(f=>!q||f.name.toLowerCase().includes(q)).sort((a,b)=>a.name.localeCompare(b.name));
-  $('#f-list').innerHTML=rows.length?rows.map(f=>`<div class="food"><div class="av">${esc(f.name.charAt(0).toUpperCase())}</div><div class="n"><b>${esc(f.name)}</b><span class="hint">${PER[f.per]}</span></div><span class="pill">${r1(f.cal)} kcal ${SHORT[f.per]}</span><button class="btn sm" data-ed="${f.id}">Edit</button><button class="x" data-rm="${f.id}" aria-label="Delete">${ICON.del}</button></div>`).join(''):'<div class="empty"><b>🥕</b>No foods yet.</div>';
+  $('#f-list').innerHTML=rows.length?rows.map(f=>`<div class="food"><div class="av">${esc(f.name.charAt(0).toUpperCase())}</div><div class="n"><b>${esc(f.name)}</b><span class="hint">${PER[f.per]}${f.protein?` · <span class="proc">${rp(f.protein)} g protein</span>`:''}</span></div><span class="pill">${r1(f.cal)} kcal ${SHORT[f.per]}</span><button class="btn sm" data-ed="${f.id}">Edit</button><button class="x" data-rm="${f.id}" aria-label="Delete">${ICON.del}</button></div>`).join(''):'<div class="empty"><b>🥕</b>No foods yet.</div>';
   $('#f-list').querySelectorAll('[data-ed]').forEach(b=>b.onclick=()=>{S.editFood=b.dataset.ed;render();window.scrollTo(0,0);});
   $('#f-list').querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{const f=db.foods.find(x=>x.id===b.dataset.rm);if(!confirm('Delete "'+f.name+'"? Past log entries are kept.'))return;db.foods=db.foods.filter(x=>x.id!==f.id);if(S.editFood===f.id)S.editFood=null;save();render();});};
  fill();$('#f-q').oninput=e=>{S.q=e.target.value;fill();};
  $('#f-seg').onchange=()=>v.querySelectorAll('#f-seg label').forEach(l=>l.classList.toggle('on',l.querySelector('input').checked));
- $('#f-save').onclick=()=>{const name=$('#f-name').value.trim(),raw=$('#f-cal').value.trim(),cal=num(raw),p=v.querySelector('input[name=per]:checked').value;
+ $('#f-save').onclick=()=>{const name=$('#f-name').value.trim(),raw=$('#f-cal').value.trim(),cal=num(raw),protein=Math.max(0,num($('#f-pro').value)),p=v.querySelector('input[name=per]:checked').value;
   if(!name)return toast('Food name is required.');if(raw===''||cal<0)return toast('Enter the calories.');
   if(db.foods.some(f=>f.name.toLowerCase()===name.toLowerCase()&&(!ed||f.id!==ed.id)))return toast('That food already exists.');
-  if(ed)Object.assign(ed,{name,cal,per:p});else db.foods.push({id:uid(),name,cal,per:p});
+  if(ed)Object.assign(ed,{name,cal,protein,per:p});else db.foods.push({id:uid(),name,cal,protein,per:p});
   S.editFood=null;save();render();toast('Saved.');};
  if($('#f-cancel'))$('#f-cancel').onclick=()=>{S.editFood=null;render();};
- ['f-name','f-cal'].forEach(i=>$('#'+i).addEventListener('keydown',e=>{if(e.key==='Enter')$('#f-save').click();}));
+ ['f-name','f-cal','f-pro'].forEach(i=>$('#'+i).addEventListener('keydown',e=>{if(e.key==='Enter')$('#f-save').click();}));
 }
 
 /* ---------- History page ---------- */
@@ -350,12 +373,13 @@ function pgHistory(v){
  const vals=span.map(d=>dayTotal(d)),tgs=span.map(targetFor),mx=Math.max(1,...vals,...tgs)*1.12;
  const logged=days.filter(d=>span.includes(d)),avg=logged.length?logged.reduce((a,d)=>a+dayTotal(d),0)/logged.length:0,onT=days.filter(d=>dayTotal(d)<=targetFor(d)).length;
  const W=600,H=190,bw=W/14;
- v.innerHTML=`<div class="kpis"><div class="stat"><span>Average / day</span><b>${r0(avg)}</b></div><div class="stat"><span>Days logged</span><b>${days.length}</b></div><div class="stat"><span>Within goal</span><b>${onT}</b></div></div>
+ const avgP=logged.length?logged.reduce((a,d)=>a+dayPro(d),0)/logged.length:0,pHit=days.filter(d=>dayPro(d)>=proFor(d)&&proFor(d)>0).length;
+ v.innerHTML=`<div class="kpis"><div class="stat"><span>Avg kcal / day</span><b>${r0(avg)}</b></div><div class="stat"><span>Avg protein / day</span><b>${rp(avgP)} <small>g</small></b></div><div class="stat"><span>Days logged</span><b>${days.length}</b></div><div class="stat"><span>Within kcal goal</span><b>${onT}</b></div><div class="stat"><span>Protein goal hit</span><b>${pHit}</b></div></div>
  <div class="card"><h2>Last 14 days</h2><svg class="chart" viewBox="0 0 ${W} ${H+22}" width="100%">
   ${span.map((d,i)=>{const h=vals[i]/mx*H,x=i*bw+bw*.18,w=bw*.64,over=vals[i]>tgs[i],ty=H-tgs[i]/mx*H;
    return`<rect x="${x}" y="${H-h}" width="${w}" height="${Math.max(h,vals[i]>0?3:0)}" rx="6" fill="${over?'var(--warn)':'var(--acc)'}" opacity="${vals[i]?1:.15}"/><rect x="${x-3}" y="${ty-1.5}" width="${w+6}" height="3" rx="1.5" fill="var(--ink)" opacity=".45"/><text x="${i*bw+bw/2}" y="${H+15}" text-anchor="middle">${toDate(d).getDate()}</text>`;}).join('')}</svg>
   <div class="legend"><span><u style="background:var(--acc)"></u>Within goal</span><span><u style="background:var(--warn)"></u>Over goal</span><span><u style="background:var(--ink);opacity:.45;border-radius:2px;height:3px;width:12px"></u>Goal</span></div></div>
- <div class="card"><h2>Day by day</h2>${days.length?days.map(d=>{const t=dayTotal(d),tg=targetFor(d),df=t-tg;return`<div class="hrow" data-d="${d}"><div class="d"><b>${dayWord(d)}</b><div class="hint">${dayFull(d)}</div></div><div class="mini ${df>0?'over':''}"><i style="width:${tg>0?Math.min(100,t/tg*100):0}%"></i></div><div style="width:80px;text-align:right"><b>${r0(t)}</b><div class="hint">of ${r0(tg)}</div></div><div class="diff ${df>0?'over':'ok'}">${df>0?'+':''}${r0(df)}</div></div>`;}).join(''):'<div class="empty"><b>📈</b>No history yet.</div>'}</div>`;
+ <div class="card"><h2>Day by day</h2>${days.length?days.map(d=>{const t=dayTotal(d),tg=targetFor(d),df=t-tg;return`<div class="hrow" data-d="${d}"><div class="d"><b>${dayWord(d)}</b><div class="hint">${dayFull(d)} · <span class="proc">${rp(dayPro(d))} g protein</span></div></div><div class="mini ${df>0?'over':''}"><i style="width:${tg>0?Math.min(100,t/tg*100):0}%"></i></div><div style="width:80px;text-align:right"><b>${r0(t)}</b><div class="hint">of ${r0(tg)}</div></div><div class="diff ${df>0?'over':'ok'}">${df>0?'+':''}${r0(df)}</div></div>`;}).join(''):'<div class="empty"><b>📈</b>No history yet.</div>'}</div>`;
  v.querySelectorAll('[data-d]').forEach(r=>r.onclick=()=>{S.date=r.dataset.d;S.tab='day';render();window.scrollTo(0,0);});
 }
 
@@ -369,11 +393,11 @@ function pgData(v){
   <div class="drop" id="drop"><b>⬆ Load CSV</b>Click to choose a file, or drop it here<br><span class="hint">Adds to what you have: foods with the same name are updated, duplicate log rows are skipped.</span></div></div>
  <div class="card"><h2>How the file looks</h2>
   <div class="scrollx"><table class="tbl"><thead><tr>${HEAD.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>
-  <tr><td>TARGET</td><td></td><td></td><td></td><td>Default daily goal</td><td></td><td></td><td>2000</td></tr>
-  <tr><td>FOOD</td><td></td><td></td><td></td><td>Cooked rice</td><td></td><td>gram</td><td>1.3</td></tr>
-  <tr><td>FOOD</td><td></td><td></td><td></td><td>Instant noodles</td><td></td><td>pack</td><td>350</td></tr>
-  <tr><td>LOG</td><td>2026-11-13</td><td>12:30</td><td>Lunch</td><td>Cooked rice</td><td>200</td><td>g</td><td>260</td></tr></tbody></table></div>
-  <p class="hint" style="margin-bottom:0">FOOD rows: <i>unit</i> is <code>gram</code>, <code>100g</code> or <code>pack</code> and <i>calories</i> is per that unit. LOG rows: <i>amount</i> is grams or packs and <i>calories</i> is the total. You can type your whole food list in Excel as FOOD rows and load it.</p></div>
+  <tr><td>TARGET</td><td></td><td></td><td></td><td>Default daily goal</td><td></td><td></td><td>2000</td><td>100</td></tr>
+  <tr><td>FOOD</td><td></td><td></td><td></td><td>Cooked rice</td><td></td><td>gram</td><td>1.3</td><td>0.027</td></tr>
+  <tr><td>FOOD</td><td></td><td></td><td></td><td>Instant noodles</td><td></td><td>pack</td><td>350</td><td>8</td></tr>
+  <tr><td>LOG</td><td>2026-11-13</td><td>12:30</td><td>Lunch</td><td>Cooked rice</td><td>200</td><td>g</td><td>260</td><td>5.4</td></tr></tbody></table></div>
+  <p class="hint" style="margin-bottom:0">FOOD rows: <i>unit</i> is <code>gram</code>, <code>100g</code> or <code>pack</code>; <i>calories</i> and <i>protein</i> (grams) are per that unit. LOG rows: <i>amount</i> is grams or packs; <i>calories</i> and <i>protein</i> are the totals. You can type your whole food list in Excel as FOOD rows and load it.</p></div>
  <div class="card"><h2>Reset</h2><button class="btn bad" id="clr">Erase everything in this browser</button>
   <div class="hint" style="margin-top:10px">Data is saved automatically in this browser. Download the CSV regularly as your backup.</div></div>`;
  $('#exp').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+buildCsv()],{type:'text/csv;charset=utf-8'}));a.download='calorie-tracker-'+today()+'.csv';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1500);toast('CSV downloaded.');};
