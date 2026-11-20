@@ -1,0 +1,1514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NutriGram — Precision Calorie & Protein Tracker</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#ecfdf5',
+                            100: '#d1fae5',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+
+    <!-- Toast Notification Container (Replaces alert/confirm) -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Custom Confirmation Modal -->
+    <div id="confirm-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 border border-slate-100">
+            <div class="flex items-center gap-3 text-amber-600 mb-3">
+                <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+                <h3 id="confirm-title" class="text-lg font-semibold text-slate-900">Confirm Action</h3>
+            </div>
+            <p id="confirm-message" class="text-sm text-slate-600 mb-6">Are you sure you want to proceed?</p>
+            <div class="flex justify-end gap-3">
+                <button id="confirm-cancel-btn" class="px-4 py-2 rounded-xl text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 transition">Cancel</button>
+                <button id="confirm-ok-btn" class="px-4 py-2 rounded-xl text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 transition">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-2.5">
+                <div class="bg-brand-600 text-white p-2 rounded-xl shadow-xs">
+                    <i data-lucide="scale" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-slate-900 text-lg leading-tight tracking-tight">NutriGram</h1>
+                    <p class="text-[11px] text-slate-500 hidden sm:block">Per-Gram Calorie & Protein Tracker</p>
+                </div>
+            </div>
+
+            <!-- Autosave Status Badge -->
+            <div id="autosave-badge" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/70 text-xs font-medium transition-all">
+                <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-emerald-600"></i>
+                <span id="autosave-text">All changes autosaved</span>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 flex gap-1 overflow-x-auto no-scrollbar">
+            <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn active flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 border-brand-600 text-brand-700 whitespace-nowrap transition">
+                <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+                Daily Log & Targets
+            </button>
+            <button onclick="switchTab('database')" id="tab-database" class="tab-btn flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap transition">
+                <i data-lucide="database" class="w-4 h-4"></i>
+                Food Database
+                <span id="food-count-badge" class="ml-1 px-2 py-0.5 text-xs rounded-full bg-slate-100 text-slate-600">0</span>
+            </button>
+            <button onclick="switchTab('history')" id="tab-history" class="tab-btn flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap transition">
+                <i data-lucide="calendar-days" class="w-4 h-4"></i>
+                History
+                <span id="history-count-badge" class="ml-1 px-2 py-0.5 text-xs rounded-full bg-slate-100 text-slate-600">0</span>
+            </button>
+            <button onclick="switchTab('backup')" id="tab-backup" class="tab-btn flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap transition">
+                <i data-lucide="hard-drive-download" class="w-4 h-4"></i>
+                Import & Export
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8">
+
+        <!-- ========================================== -->
+        <!-- TAB 1: DAILY LOG & TARGETS                 -->
+        <!-- ========================================== -->
+        <section id="view-dashboard" class="space-y-6">
+            
+            <!-- Top Grid: Targets & Progress -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- Daily Targets Setup Card -->
+                <div class="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-base font-semibold text-slate-900 flex items-center gap-2">
+                                <i data-lucide="target" class="w-4 h-4 text-brand-600"></i>
+                                Daily Targets
+                            </h2>
+                            <span class="text-xs text-slate-400">Auto-updates</span>
+                        </div>
+                        <div class="space-y-4">
+                            <div>
+                                <label for="target-calories" class="block text-xs font-medium text-slate-600 mb-1">Daily Calorie Target (kcal)</label>
+                                <div class="relative">
+                                    <input type="number" id="target-calories" min="0" step="10" placeholder="2000"
+                                        class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition">
+                                    <span class="absolute right-3.5 top-2.5 text-xs font-medium text-slate-400">kcal</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label for="target-protein" class="block text-xs font-medium text-slate-600 mb-1">Daily Protein Target (g)</label>
+                                <div class="relative">
+                                    <input type="number" id="target-protein" min="0" step="1" placeholder="150"
+                                        class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition">
+                                    <span class="absolute right-3.5 top-2.5 text-xs font-medium text-slate-400">grams</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                        <span>Log Date:</span>
+                        <input type="date" id="log-date-picker" class="font-medium text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg border-none focus:ring-2 focus:ring-brand-500">
+                    </div>
+                </div>
+
+                <!-- Visual Progress Bars Card -->
+                <div class="lg:col-span-2 bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-5">
+                            <h2 class="text-base font-semibold text-slate-900 flex items-center gap-2">
+                                <i data-lucide="activity" class="w-4 h-4 text-brand-600"></i>
+                                Today's Remaining Targets
+                            </h2>
+                            <button onclick="confirmClearTodayLog()" class="text-xs text-rose-600 hover:text-rose-700 font-medium flex items-center gap-1 px-2.5 py-1 rounded-lg hover:bg-rose-50 transition">
+                                <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                                Reset Day
+                            </button>
+                        </div>
+
+                        <!-- Minimalist Circular Remaining Target Charts -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 py-2">
+                            <!-- Calories Circular Ring -->
+                            <div class="flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-50/70 border border-slate-100">
+                                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Calories</span>
+                                <div class="relative w-36 h-36 flex items-center justify-center">
+                                    <svg class="w-full h-full -rotate-90 transform" viewBox="0 0 120 120">
+                                        <circle cx="60" cy="60" r="52" stroke="currentColor" stroke-width="8" fill="transparent" class="text-slate-200/80" />
+                                        <circle id="cal-ring-progress" cx="60" cy="60" r="52" stroke="currentColor" stroke-width="8" stroke-linecap="round" fill="transparent"
+                                            stroke-dasharray="326.7256" stroke-dashoffset="326.7256"
+                                            class="text-amber-500 transition-all duration-500 ease-out" />
+                                    </svg>
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center text-center px-2">
+                                        <span id="cal-ring-main" class="text-xl font-bold text-slate-900 leading-tight">2,000</span>
+                                        <span id="cal-ring-sub" class="text-[11px] font-medium text-slate-500 mt-0.5">kcal left</span>
+                                    </div>
+                                </div>
+                                <div class="mt-3 text-xs text-slate-500 font-medium">
+                                    <span id="cal-consumed" class="text-slate-800 font-semibold">0</span> / <span id="cal-target-display">2000</span> kcal
+                                </div>
+                            </div>
+
+                            <!-- Protein Circular Ring -->
+                            <div class="flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-50/70 border border-slate-100">
+                                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Protein</span>
+                                <div class="relative w-36 h-36 flex items-center justify-center">
+                                    <svg class="w-full h-full -rotate-90 transform" viewBox="0 0 120 120">
+                                        <circle cx="60" cy="60" r="52" stroke="currentColor" stroke-width="8" fill="transparent" class="text-slate-200/80" />
+                                        <circle id="prot-ring-progress" cx="60" cy="60" r="52" stroke="currentColor" stroke-width="8" stroke-linecap="round" fill="transparent"
+                                            stroke-dasharray="326.7256" stroke-dashoffset="326.7256"
+                                            class="text-brand-600 transition-all duration-500 ease-out" />
+                                    </svg>
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center text-center px-2">
+                                        <span id="prot-ring-main" class="text-xl font-bold text-brand-700 leading-tight">150.0g</span>
+                                        <span id="prot-ring-sub" class="text-[11px] font-medium text-slate-500 mt-0.5">left</span>
+                                    </div>
+                                </div>
+                                <div class="mt-3 text-xs text-slate-500 font-medium">
+                                    <span id="prot-consumed" class="text-slate-800 font-semibold">0.0</span> / <span id="prot-target-display">150</span> g
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Micronutrients Summary Pills -->
+                    <div class="mt-5 pt-4 border-t border-slate-100">
+                        <div class="flex items-center justify-between mb-2.5">
+                            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Micronutrients Logged Today</span>
+                        </div>
+                        <div id="daily-micros-summary" class="flex flex-wrap gap-2">
+                            <span class="text-xs text-slate-400 italic">No micronutrients logged yet today.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Middle Section: Quick Log Food Form -->
+            <div class="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs">
+                <h2 class="text-base font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                    <i data-lucide="plus-circle" class="w-4 h-4 text-brand-600"></i>
+                    Log Food Intake
+                </h2>
+                <form id="log-food-form" class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-end">
+                    <div class="sm:col-span-6 relative" id="food-search-wrapper">
+                        <label for="log-food-search" class="block text-xs font-medium text-slate-600 mb-1">Search & Select Food from Database</label>
+                        <input type="hidden" id="log-food-selected-id" value="">
+                        <div class="relative">
+                            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none"></i>
+                            <input type="text" id="log-food-search" autocomplete="off" placeholder="Type to search foods (e.g., Chicken, Rice)..."
+                                class="w-full rounded-xl border border-slate-300 pl-10 pr-9 py-2.5 text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 transition">
+                            <button type="button" id="clear-food-search-btn" onclick="clearFoodSearch()" title="Clear search"
+                                class="hidden absolute right-2.5 top-2 p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition">
+                                <i data-lucide="x" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                        <!-- Auto-Suggest Dropdown -->
+                        <div id="food-autosuggest-dropdown" class="hidden absolute z-40 left-0 right-0 mt-1.5 bg-white rounded-xl border border-slate-200 shadow-lg max-h-60 overflow-y-auto divide-y divide-slate-100">
+                            <!-- Populated dynamically via JS -->
+                        </div>
+                    </div>
+                    <div class="sm:col-span-3">
+                        <label for="log-food-grams" class="block text-xs font-medium text-slate-600 mb-1">Weight (grams)</label>
+                        <div class="relative">
+                            <input type="number" id="log-food-grams" required min="0.1" step="any" placeholder="100"
+                                class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            <span class="absolute right-3.5 top-2.5 text-xs font-medium text-slate-400">g</span>
+                        </div>
+                    </div>
+                    <div class="sm:col-span-3">
+                        <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-medium text-sm py-2.5 px-4 rounded-xl shadow-xs transition flex items-center justify-center gap-2 cursor-pointer">
+                            <i data-lucide="plus" class="w-4 h-4"></i>
+                            Add to Log
+                        </button>
+                    </div>
+                </form>
+                <!-- Live Preview of Selected Food Calculation -->
+                <div id="log-preview-bar" class="mt-3 text-xs text-slate-500 flex flex-wrap items-center gap-x-4 gap-y-1 bg-slate-50 px-3.5 py-2 rounded-xl border border-slate-100">
+                    <span>Search and select a food, then enter grams to preview nutrition.</span>
+                </div>
+            </div>
+
+            <!-- Bottom Section: Today's Logged Entries Table -->
+            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                    <h2 class="text-base font-semibold text-slate-900">Logged Foods (<span id="logged-items-count">0</span>)</h2>
+                    <button onclick="switchTab('database')" class="text-xs font-medium text-brand-600 hover:text-brand-700 flex items-center gap-1">
+                        <i data-lucide="plus" class="w-3.5 h-3.5"></i> Create New Food
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50/80 text-[11px] font-semibold uppercase tracking-wider text-slate-500 border-b border-slate-200/80">
+                                <th class="py-3 px-6">Food Name</th>
+                                <th class="py-3 px-4">Weight</th>
+                                <th class="py-3 px-4">Calories</th>
+                                <th class="py-3 px-4">Protein</th>
+                                <th class="py-3 px-6 text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="daily-log-tbody" class="divide-y divide-slate-100 text-sm">
+                            <!-- Populated via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ========================================== -->
+        <!-- TAB 2: FOOD DATABASE MANAGEMENT            -->
+        <!-- ========================================== -->
+        <section id="view-database" class="hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                <!-- Add / Edit Food Form (5 cols) -->
+                <div class="lg:col-span-5 bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs h-fit">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 id="food-form-title" class="text-base font-semibold text-slate-900 flex items-center gap-2">
+                            <i data-lucide="utensils" class="w-4 h-4 text-brand-600"></i>
+                            Add Custom Food
+                        </h2>
+                        <button id="cancel-edit-food-btn" onclick="resetFoodForm()" class="hidden text-xs text-slate-500 hover:text-slate-800 underline">
+                            Cancel Edit
+                        </button>
+                    </div>
+
+                    <p class="text-[11px] text-slate-500 mb-4">
+                        Enter exact nutritional values <strong>per 1 gram</strong> of food (e.g., Chicken Breast = 1.65 kcal/g, 0.31g protein/g).
+                    </p>
+
+                    <form id="food-db-form" class="space-y-4">
+                        <input type="hidden" id="edit-food-id" value="">
+                        
+                        <div>
+                            <label for="food-name" class="block text-xs font-medium text-slate-700 mb-1">Food Name *</label>
+                            <input type="text" id="food-name" required placeholder="e.g., Grilled Chicken Breast"
+                                class="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label for="food-cal" class="block text-xs font-medium text-slate-700 mb-1">
+                                    Calories (kcal/g) *
+                                </label>
+                                <input type="number" id="food-cal" required min="0" step="any" placeholder="1.65"
+                                    class="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            </div>
+                            <div>
+                                <label for="food-prot" class="block text-xs font-medium text-slate-700 mb-1">
+                                    Protein (g/g) *
+                                </label>
+                                <input type="number" id="food-prot" required min="0" step="any" placeholder="0.31"
+                                    class="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            </div>
+                        </div>
+
+                        <button type="submit" id="save-food-btn" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-medium text-sm py-2.5 px-4 rounded-xl shadow-xs transition flex items-center justify-center gap-2 cursor-pointer mt-2">
+                            <i data-lucide="save" class="w-4 h-4"></i>
+                            Save Food to Database
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Food Database List (7 cols) -->
+                <div class="lg:col-span-7 bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden flex flex-col">
+                    <div class="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <h2 class="text-base font-semibold text-slate-900">Saved Foods Database</h2>
+                        <div class="relative w-full sm:w-64">
+                            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i>
+                            <input type="text" id="db-search-input" placeholder="Search foods..."
+                                class="w-full pl-9 pr-3.5 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        </div>
+                    </div>
+
+                    <div id="food-db-list" class="divide-y divide-slate-100 overflow-y-auto max-h-[650px]">
+                        <!-- Populated via JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ========================================== -->
+        <!-- TAB 3: LOG HISTORY                         -->
+        <!-- ========================================== -->
+        <section id="view-history" class="hidden space-y-6">
+            <!-- Summary Overview Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs">
+                    <span class="text-xs font-medium text-slate-500">Total Days Logged</span>
+                    <div id="history-stat-days" class="text-2xl font-bold text-slate-900 mt-1">0</div>
+                </div>
+                <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs">
+                    <span class="text-xs font-medium text-slate-500">Daily Avg Calories</span>
+                    <div id="history-stat-avg-cal" class="text-2xl font-bold text-amber-600 mt-1">0 kcal</div>
+                </div>
+                <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs">
+                    <span class="text-xs font-medium text-slate-500">Daily Avg Protein</span>
+                    <div id="history-stat-avg-prot" class="text-2xl font-bold text-brand-600 mt-1">0.0 g</div>
+                </div>
+            </div>
+
+            <!-- History List Container -->
+            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                        <h2 class="text-base font-semibold text-slate-900 flex items-center gap-2">
+                            <i data-lucide="history" class="w-4 h-4 text-brand-600"></i>
+                            Daily Nutrition History
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-0.5">Click any date card to view item breakdown or open it in the Daily Log.</p>
+                    </div>
+                </div>
+                <div id="history-list-container" class="divide-y divide-slate-100">
+                    <!-- Populated via JS -->
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ========================================== -->
+        <!-- TAB 4: IMPORT & EXPORT DATABASE            -->
+        <!-- ========================================== -->
+        <section id="view-backup" class="hidden space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                <!-- Export Card -->
+                <div class="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs flex flex-col justify-between">
+                    <div>
+                        <div class="w-10 h-10 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center mb-4">
+                            <i data-lucide="download" class="w-5 h-5"></i>
+                        </div>
+                        <h2 class="text-lg font-semibold text-slate-900 mb-2">Export Database & Logs</h2>
+                        <p class="text-sm text-slate-600 mb-4 leading-relaxed">
+                            Download a complete backup of your custom foods (including per-gram calories and protein), daily targets, and food logs as a portable JSON file.
+                        </p>
+                        <div class="bg-slate-50 rounded-xl p-4 border border-slate-100 text-xs text-slate-600 space-y-1.5 mb-6">
+                            <div class="flex justify-between">
+                                <span>Foods in Database:</span>
+                                <span id="export-stat-foods" class="font-semibold text-slate-900">0 items</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Days Logged:</span>
+                                <span id="export-stat-days" class="font-semibold text-slate-900">0 days</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Current Targets:</span>
+                                <span id="export-stat-targets" class="font-semibold text-slate-900">2000 kcal / 150g</span>
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="exportDatabaseJSON()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium text-sm py-3 px-4 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer">
+                        <i data-lucide="file-json" class="w-4 h-4"></i>
+                        Download Backup (.json)
+                    </button>
+                </div>
+
+                <!-- Import Card -->
+                <div class="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs flex flex-col justify-between">
+                    <div>
+                        <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-4">
+                            <i data-lucide="upload" class="w-5 h-5"></i>
+                        </div>
+                        <h2 class="text-lg font-semibold text-slate-900 mb-2">Import Database</h2>
+                        <p class="text-sm text-slate-600 mb-4 leading-relaxed">
+                            Restore a previously exported NutriGram JSON file. Choose whether to merge new foods with your existing database or overwrite everything.
+                        </p>
+
+                        <div class="space-y-3 mb-6">
+                            <label class="flex items-start gap-2.5 p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 transition">
+                                <input type="radio" name="import-mode" value="merge" checked class="mt-0.5 text-brand-600 focus:ring-brand-500">
+                                <div>
+                                    <span class="block text-xs font-semibold text-slate-900">Merge with Current Data (Recommended)</span>
+                                    <span class="block text-[11px] text-slate-500">Adds imported foods and logs without deleting your existing items.</span>
+                                </div>
+                            </label>
+                            <label class="flex items-start gap-2.5 p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 transition">
+                                <input type="radio" name="import-mode" value="replace" class="mt-0.5 text-brand-600 focus:ring-brand-500">
+                                <div>
+                                    <span class="block text-xs font-semibold text-slate-900">Full Restore (Overwrite)</span>
+                                    <span class="block text-[11px] text-slate-500">Replaces your current targets, foods, and logs with the backup file.</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <input type="file" id="import-file-input" accept=".json,application/json" class="hidden" onchange="handleFileImport(event)">
+                        <button onclick="document.getElementById('import-file-input').click()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm py-3 px-4 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer">
+                            <i data-lucide="folder-up" class="w-4 h-4"></i>
+                            Select JSON File to Import
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Danger Zone / Reset Defaults -->
+            <div class="bg-white rounded-2xl p-6 border border-rose-200/70 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                    <h3 class="text-sm font-semibold text-rose-700">Reset to Starter Defaults</h3>
+                    <p class="text-xs text-slate-500 mt-0.5">Restore the original sample foods and clear all custom logs from browser storage.</p>
+                </div>
+                <button onclick="confirmFactoryReset()" class="px-4 py-2 rounded-xl text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition whitespace-nowrap">
+                    Reset All Data
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // =========================================================================
+        // 1. STATE MANAGEMENT & AUTOSAVE ENGINE
+        // =========================================================================
+        const STORAGE_KEY = 'nutrigram_app_state_v1';
+
+        // Starter foods with accurate per-gram calorie & protein values
+        const DEFAULT_FOODS = [
+            {
+                id: 'food_chicken_breast',
+                name: 'Chicken Breast (Cooked, Skinless)',
+                caloriesPerGram: 1.65,
+                proteinPerGram: 0.31
+            },
+            {
+                id: 'food_white_rice',
+                name: 'White Rice (Cooked)',
+                caloriesPerGram: 1.30,
+                proteinPerGram: 0.027
+            },
+            {
+                id: 'food_whole_egg',
+                name: 'Whole Egg (Boiled/Poached)',
+                caloriesPerGram: 1.55,
+                proteinPerGram: 0.13
+            },
+            {
+                id: 'food_broccoli',
+                name: 'Broccoli (Steamed)',
+                caloriesPerGram: 0.35,
+                proteinPerGram: 0.024
+            },
+            {
+                id: 'food_oats',
+                name: 'Rolled Oats (Dry)',
+                caloriesPerGram: 3.79,
+                proteinPerGram: 0.132
+            }
+        ];
+
+        function getTodayDateString() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        let appState = {
+            targets: {
+                calories: 2000,
+                protein: 150
+            },
+            foods: [],
+            logs: {} // Keyed by YYYY-MM-DD -> Array of log entries
+        };
+
+        let currentDate = getTodayDateString();
+        let autosaveTimeout = null;
+        const RING_CIRCUMFERENCE = 2 * Math.PI * 52; // ~326.7256 for r=52
+
+        // Load from localStorage on startup
+        function loadState() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    appState.targets = {
+                        calories: Number(parsed?.targets?.calories) || 2000,
+                        protein: Number(parsed?.targets?.protein) || 150
+                    };
+                    appState.foods = Array.isArray(parsed?.foods) ? parsed.foods : [...DEFAULT_FOODS];
+                    appState.logs = (parsed?.logs && typeof parsed.logs === 'object') ? parsed.logs : {};
+                } else {
+                    appState.foods = [...DEFAULT_FOODS];
+                    saveState(true);
+                }
+            } catch (err) {
+                console.error('Failed to load state:', err);
+                appState.foods = [...DEFAULT_FOODS];
+                showToast('Could not read saved data; loaded defaults.', 'error');
+            }
+        }
+
+        // Autosave to localStorage
+        function saveState(silent = false) {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+                updateFoodCountBadge();
+                updateHistoryCountBadge();
+                updateBackupStats();
+
+                if (!silent) {
+                    const badge = document.getElementById('autosave-badge');
+                    const text = document.getElementById('autosave-text');
+                    const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                    text.textContent = `Autosaved at ${now}`;
+                    badge.classList.add('ring-2', 'ring-emerald-300');
+                    clearTimeout(autosaveTimeout);
+                    autosaveTimeout = setTimeout(() => {
+                        badge.classList.remove('ring-2', 'ring-emerald-300');
+                    }, 900);
+                }
+            } catch (err) {
+                console.error('Autosave error:', err);
+                showToast('Autosave failed (storage limit or private mode).', 'error');
+            }
+        }
+
+        // =========================================================================
+        // 2. NAVIGATION, TABS & UI HELPERS
+        // =========================================================================
+        function switchTab(tabName) {
+            const tabs = ['dashboard', 'database', 'history', 'backup'];
+            tabs.forEach(t => {
+                const viewEl = document.getElementById(`view-${t}`);
+                const btnEl = document.getElementById(`tab-${t}`);
+                if (!viewEl || !btnEl) return;
+
+                if (t === tabName) {
+                    viewEl.classList.remove('hidden');
+                    btnEl.classList.add('active', 'border-brand-600', 'text-brand-700');
+                    btnEl.classList.remove('border-transparent', 'text-slate-500');
+                } else {
+                    viewEl.classList.add('hidden');
+                    btnEl.classList.remove('active', 'border-brand-600', 'text-brand-700');
+                    btnEl.classList.add('border-transparent', 'text-slate-500');
+                }
+            });
+
+            if (tabName === 'history') {
+                renderHistory();
+            } else if (tabName === 'backup') {
+                updateBackupStats();
+            }
+            lucide.createIcons();
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const isError = type === 'error';
+            toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg text-xs font-medium border transition-all duration-300 ${
+                isError
+                    ? 'bg-rose-600 text-white border-rose-700'
+                    : 'bg-slate-900 text-white border-slate-800'
+            }`;
+            toast.innerHTML = `
+                <i data-lucide="${isError ? 'alert-circle' : 'check-circle-2'}" class="w-4 h-4 shrink-0 ${isError ? 'text-rose-200' : 'text-emerald-400'}"></i>
+                <span>${escapeHtml(message)}</span>
+            `;
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function showConfirmModal(title, message, onConfirm) {
+            const modal = document.getElementById('confirm-modal');
+            document.getElementById('confirm-title').textContent = title;
+            document.getElementById('confirm-message').textContent = message;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+
+            const okBtn = document.getElementById('confirm-ok-btn');
+            const cancelBtn = document.getElementById('confirm-cancel-btn');
+
+            const cleanup = () => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                okBtn.onclick = null;
+                cancelBtn.onclick = null;
+            };
+
+            cancelBtn.onclick = cleanup;
+            okBtn.onclick = () => {
+                cleanup();
+                onConfirm();
+            };
+        }
+
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function roundNum(num, decimals = 2) {
+            if (isNaN(num)) return 0;
+            const factor = Math.pow(10, decimals);
+            return Math.round((num + Number.EPSILON) * factor) / factor;
+        }
+
+        // =========================================================================
+        // 3. TARGETS & DATE INITIALIZATION
+        // =========================================================================
+        function initTargetsAndDate() {
+            const calInput = document.getElementById('target-calories');
+            const protInput = document.getElementById('target-protein');
+            const datePicker = document.getElementById('log-date-picker');
+
+            calInput.value = appState.targets.calories;
+            protInput.value = appState.targets.protein;
+            datePicker.value = currentDate;
+
+            calInput.addEventListener('input', () => {
+                appState.targets.calories = Math.max(0, parseFloat(calInput.value) || 0);
+                saveState();
+                renderDashboard();
+            });
+
+            protInput.addEventListener('input', () => {
+                appState.targets.protein = Math.max(0, parseFloat(protInput.value) || 0);
+                saveState();
+                renderDashboard();
+            });
+
+            datePicker.addEventListener('change', (e) => {
+                if (e.target.value) {
+                    currentDate = e.target.value;
+                    renderDashboard();
+                }
+            });
+        }
+
+        // =========================================================================
+        // 3B. SEARCHABLE AUTO-SUGGEST FOOD SELECTOR
+        // =========================================================================
+        function initFoodSearchSelector() {
+            const searchInput = document.getElementById('log-food-search');
+            const dropdown = document.getElementById('food-autosuggest-dropdown');
+            const wrapper = document.getElementById('food-search-wrapper');
+
+            searchInput.addEventListener('focus', () => {
+                renderFoodSuggestions(searchInput.value);
+                dropdown.classList.remove('hidden');
+            });
+
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value;
+                // Clear selected ID if user modifies text away from selected food
+                const selectedId = document.getElementById('log-food-selected-id').value;
+                if (selectedId) {
+                    const currentFood = appState.foods.find(f => f.id === selectedId);
+                    if (!currentFood || currentFood.name !== query) {
+                        document.getElementById('log-food-selected-id').value = '';
+                        updateLogPreview();
+                    }
+                }
+                updateClearSearchButton();
+                renderFoodSuggestions(query);
+                dropdown.classList.remove('hidden');
+            });
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!wrapper.contains(e.target)) {
+                    dropdown.classList.add('hidden');
+                }
+            });
+        }
+
+        function updateClearSearchButton() {
+            const searchInput = document.getElementById('log-food-search');
+            const clearBtn = document.getElementById('clear-food-search-btn');
+            if (searchInput.value.length > 0) {
+                clearBtn.classList.remove('hidden');
+            } else {
+                clearBtn.classList.add('hidden');
+            }
+        }
+
+        function clearFoodSearch() {
+            const searchInput = document.getElementById('log-food-search');
+            document.getElementById('log-food-selected-id').value = '';
+            searchInput.value = '';
+            updateClearSearchButton();
+            updateLogPreview();
+            renderFoodSuggestions('');
+            searchInput.focus();
+            document.getElementById('food-autosuggest-dropdown').classList.remove('hidden');
+        }
+
+        function selectFoodFromSuggestion(foodId) {
+            const food = appState.foods.find(f => f.id === foodId);
+            if (!food) return;
+
+            document.getElementById('log-food-selected-id').value = food.id;
+            document.getElementById('log-food-search').value = food.name;
+            updateClearSearchButton();
+            document.getElementById('food-autosuggest-dropdown').classList.add('hidden');
+            updateLogPreview();
+            document.getElementById('log-food-grams').focus();
+        }
+
+        function renderFoodSuggestions(query = '') {
+            const dropdown = document.getElementById('food-autosuggest-dropdown');
+            const q = query.trim().toLowerCase();
+
+            if (appState.foods.length === 0) {
+                dropdown.innerHTML = `<div class="p-3.5 text-xs text-slate-400 text-center">No foods in database. Add one in the Food Database tab.</div>`;
+                return;
+            }
+
+            const matches = appState.foods
+                .filter(f => f.name.toLowerCase().includes(q))
+                .sort((a, b) => a.name.localeCompare(b.name));
+
+            if (matches.length === 0) {
+                dropdown.innerHTML = `<div class="p-3.5 text-xs text-slate-400 text-center">No foods matching "${escapeHtml(query)}"</div>`;
+                return;
+            }
+
+            const selectedId = document.getElementById('log-food-selected-id').value;
+
+            dropdown.innerHTML = matches.map(f => {
+                const isSelected = f.id === selectedId;
+                return `
+                    <button type="button" onclick="selectFoodFromSuggestion('${f.id}')"
+                        class="w-full text-left px-3.5 py-2.5 hover:bg-brand-50/70 transition flex items-center justify-between gap-2 ${isSelected ? 'bg-brand-50/60' : ''}">
+                        <span class="text-sm font-medium text-slate-900 truncate">${escapeHtml(f.name)}</span>
+                        <span class="text-[11px] text-slate-500 shrink-0 flex items-center gap-2">
+                            <span class="text-amber-700 font-medium">${roundNum(f.caloriesPerGram, 2)} kcal/g</span>
+                            <span class="text-slate-300">•</span>
+                            <span class="text-brand-700 font-medium">${roundNum(f.proteinPerGram, 3)}g P/g</span>
+                        </span>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function updateLogFoodDropdown() {
+            const selectedId = document.getElementById('log-food-selected-id').value;
+            if (selectedId) {
+                const stillExists = appState.foods.find(f => f.id === selectedId);
+                if (!stillExists) {
+                    document.getElementById('log-food-selected-id').value = '';
+                    document.getElementById('log-food-search').value = '';
+                    updateClearSearchButton();
+                } else {
+                    document.getElementById('log-food-search').value = stillExists.name;
+                }
+            }
+            renderFoodSuggestions(document.getElementById('log-food-search').value);
+            updateLogPreview();
+        }
+
+        function updateLogPreview() {
+            const foodId = document.getElementById('log-food-selected-id').value;
+            const grams = parseFloat(document.getElementById('log-food-grams').value);
+            const previewBar = document.getElementById('log-preview-bar');
+
+            const food = appState.foods.find(f => f.id === foodId);
+            if (!food || isNaN(grams) || grams <= 0) {
+                previewBar.innerHTML = `<span>Search and select a food, then enter grams to preview nutrition calculation.</span>`;
+                return;
+            }
+
+            const totalCal = food.caloriesPerGram * grams;
+            const totalProt = food.proteinPerGram * grams;
+
+            previewBar.innerHTML = `
+                <span class="font-medium text-slate-700">Preview (${grams}g):</span>
+                <span class="text-amber-700 font-semibold">${roundNum(totalCal, 1)} kcal</span>
+                <span class="text-brand-700 font-semibold">${roundNum(totalProt, 1)}g Protein</span>
+            `;
+        }
+
+        document.getElementById('log-food-grams').addEventListener('input', updateLogPreview);
+
+        document.getElementById('log-food-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            let foodId = document.getElementById('log-food-selected-id').value;
+            const searchQuery = document.getElementById('log-food-search').value.trim();
+            const grams = parseFloat(document.getElementById('log-food-grams').value);
+
+            // Allow exact name match fallback if user typed exact food name without clicking dropdown
+            let food = appState.foods.find(f => f.id === foodId);
+            if (!food && searchQuery) {
+                food = appState.foods.find(f => f.name.toLowerCase() === searchQuery.toLowerCase());
+            }
+
+            if (!food) {
+                showToast('Please search and select a valid food from the suggestions.', 'error');
+                document.getElementById('log-food-search').focus();
+                return;
+            }
+            if (isNaN(grams) || grams <= 0) {
+                showToast('Please enter a valid weight in grams.', 'error');
+                return;
+            }
+
+            if (!appState.logs[currentDate]) {
+                appState.logs[currentDate] = [];
+            }
+
+            // Snapshot the food values at the time of logging so history stays accurate
+            const logEntry = {
+                entryId: 'log_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+                foodId: food.id,
+                foodName: food.name,
+                grams: grams,
+                calories: food.caloriesPerGram * grams,
+                protein: food.proteinPerGram * grams
+            };
+
+            appState.logs[currentDate].push(logEntry);
+            document.getElementById('log-food-grams').value = '';
+            updateLogPreview();
+            saveState();
+            renderDashboard();
+            showToast(`Logged ${grams}g of ${food.name}`);
+        });
+
+        function deleteLogEntry(entryId) {
+            if (!appState.logs[currentDate]) return;
+            appState.logs[currentDate] = appState.logs[currentDate].filter(item => item.entryId !== entryId);
+            saveState();
+            renderDashboard();
+            showToast('Removed entry from log.');
+        }
+
+        function confirmClearTodayLog() {
+            const entries = appState.logs[currentDate] || [];
+            if (entries.length === 0) {
+                showToast('No entries logged for this date.', 'error');
+                return;
+            }
+            showConfirmModal(
+                'Reset Day Log',
+                `Remove all ${entries.length} logged food items for ${currentDate}?`,
+                () => {
+                    appState.logs[currentDate] = [];
+                    saveState();
+                    renderDashboard();
+                    showToast('Day log cleared.');
+                }
+            );
+        }
+
+        // =========================================================================
+        // 3C. DASHBOARD RENDERING (RINGS & LOG TABLE)
+        // =========================================================================
+        function renderDashboard() {
+            const entries = appState.logs[currentDate] || [];
+            document.getElementById('logged-items-count').textContent = entries.length;
+
+            let totalCal = 0;
+            let totalProt = 0;
+
+            entries.forEach(entry => {
+                totalCal += Number(entry.calories) || 0;
+                totalProt += Number(entry.protein) || 0;
+            });
+
+            // Update Minimalist Circular Remaining Target Charts
+            const calTarget = appState.targets.calories || 0;
+            const protTarget = appState.targets.protein || 0;
+
+            // 1. Calories Circle Ring
+            document.getElementById('cal-consumed').textContent = Math.round(totalCal).toLocaleString();
+            document.getElementById('cal-target-display').textContent = calTarget.toLocaleString();
+            const calRatio = calTarget > 0 ? Math.min(1, totalCal / calTarget) : 0;
+            const calOffset = RING_CIRCUMFERENCE * (1 - calRatio);
+            const calRing = document.getElementById('cal-ring-progress');
+            calRing.style.strokeDashoffset = calOffset;
+
+            const calDiff = calTarget - totalCal;
+            const calMainEl = document.getElementById('cal-ring-main');
+            const calSubEl = document.getElementById('cal-ring-sub');
+
+            if (calDiff >= 0) {
+                calRing.classList.remove('text-rose-500');
+                calRing.classList.add('text-amber-500');
+                calMainEl.className = 'text-xl font-bold text-slate-900 leading-tight';
+                calMainEl.textContent = Math.round(calDiff).toLocaleString();
+                calSubEl.textContent = 'kcal left';
+            } else {
+                calRing.classList.remove('text-amber-500');
+                calRing.classList.add('text-rose-500');
+                calMainEl.className = 'text-lg font-bold text-rose-600 leading-tight';
+                calMainEl.textContent = `+${Math.abs(Math.round(calDiff)).toLocaleString()}`;
+                calSubEl.textContent = 'kcal over';
+            }
+
+            // 2. Protein Circle Ring
+            document.getElementById('prot-consumed').textContent = roundNum(totalProt, 1);
+            document.getElementById('prot-target-display').textContent = protTarget;
+            const protRatio = protTarget > 0 ? Math.min(1, totalProt / protTarget) : 0;
+            const protOffset = RING_CIRCUMFERENCE * (1 - protRatio);
+            const protRing = document.getElementById('prot-ring-progress');
+            protRing.style.strokeDashoffset = protOffset;
+
+            const protDiff = protTarget - totalProt;
+            const protMainEl = document.getElementById('prot-ring-main');
+            const protSubEl = document.getElementById('prot-ring-sub');
+
+            if (protDiff >= 0) {
+                protMainEl.className = 'text-xl font-bold text-brand-700 leading-tight';
+                protMainEl.textContent = `${roundNum(protDiff, 1)}g`;
+                protSubEl.textContent = 'left';
+            } else {
+                protMainEl.className = 'text-lg font-bold text-emerald-600 leading-tight';
+                protMainEl.textContent = `+${roundNum(Math.abs(protDiff), 1)}g`;
+                protSubEl.textContent = 'over target';
+            }
+
+            // Render Logged Foods Table
+            const tbody = document.getElementById('daily-log-tbody');
+            if (entries.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="py-10 px-6 text-center text-xs text-slate-400">
+                            No foods logged for <strong>${escapeHtml(currentDate)}</strong> yet. Use the form above to log your meals.
+                        </td>
+                    </tr>
+                `;
+            } else {
+                tbody.innerHTML = entries.map(entry => {
+                    return `
+                        <tr class="hover:bg-slate-50/80 transition">
+                            <td class="py-3.5 px-6 font-medium text-slate-900">${escapeHtml(entry.foodName)}</td>
+                            <td class="py-3.5 px-4 text-slate-600">${roundNum(entry.grams, 1)}g</td>
+                            <td class="py-3.5 px-4 font-semibold text-amber-700">${roundNum(entry.calories, 1)} kcal</td>
+                            <td class="py-3.5 px-4 font-semibold text-brand-700">${roundNum(entry.protein, 1)}g</td>
+                            <td class="py-3.5 px-6 text-right">
+                                <button onclick="deleteLogEntry('${entry.entryId}')" title="Delete entry"
+                                    class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            lucide.createIcons();
+        }
+
+        // =========================================================================
+        // 4. FOOD DATABASE MANAGEMENT (PER-GRAM)
+        // =========================================================================
+        document.getElementById('food-db-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const editId = document.getElementById('edit-food-id').value;
+            const name = document.getElementById('food-name').value.trim();
+            const cal = parseFloat(document.getElementById('food-cal').value);
+            const prot = parseFloat(document.getElementById('food-prot').value);
+
+            if (!name || isNaN(cal) || cal < 0 || isNaN(prot) || prot < 0) {
+                showToast('Please fill out Food Name, Calories per gram, and Protein per gram accurately.', 'error');
+                return;
+            }
+
+            if (editId) {
+                const idx = appState.foods.findIndex(f => f.id === editId);
+                if (idx !== -1) {
+                    appState.foods[idx] = {
+                        ...appState.foods[idx],
+                        name,
+                        caloriesPerGram: cal,
+                        proteinPerGram: prot
+                    };
+                    showToast(`Updated "${name}" in database.`);
+                }
+            } else {
+                const newFood = {
+                    id: 'food_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+                    name,
+                    caloriesPerGram: cal,
+                    proteinPerGram: prot
+                };
+                appState.foods.push(newFood);
+                showToast(`Added "${name}" to database.`);
+            }
+
+            resetFoodForm();
+            saveState();
+            renderFoodDatabase();
+            updateLogFoodDropdown();
+        });
+
+        function editFood(foodId) {
+            const food = appState.foods.find(f => f.id === foodId);
+            if (!food) return;
+
+            document.getElementById('edit-food-id').value = food.id;
+            document.getElementById('food-name').value = food.name;
+            document.getElementById('food-cal').value = roundNum(food.caloriesPerGram, 4);
+            document.getElementById('food-prot').value = roundNum(food.proteinPerGram, 4);
+
+            document.getElementById('food-form-title').innerHTML = `<i data-lucide="edit-3" class="w-4 h-4 text-indigo-600"></i> Edit Food`;
+            document.getElementById('save-food-btn').innerHTML = `<i data-lucide="check" class="w-4 h-4"></i> Update Food`;
+            document.getElementById('cancel-edit-food-btn').classList.remove('hidden');
+            lucide.createIcons();
+            document.getElementById('food-name').focus();
+        }
+
+        function resetFoodForm() {
+            document.getElementById('edit-food-id').value = '';
+            document.getElementById('food-db-form').reset();
+            document.getElementById('food-form-title').innerHTML = `<i data-lucide="utensils" class="w-4 h-4 text-brand-600"></i> Add Custom Food`;
+            document.getElementById('save-food-btn').innerHTML = `<i data-lucide="save" class="w-4 h-4"></i> Save Food to Database`;
+            document.getElementById('cancel-edit-food-btn').classList.add('hidden');
+            lucide.createIcons();
+        }
+
+        function confirmDeleteFood(foodId) {
+            const food = appState.foods.find(f => f.id === foodId);
+            if (!food) return;
+            showConfirmModal(
+                'Delete Food',
+                `Delete "${food.name}" from your food database? Existing past logs will remain intact.`,
+                () => {
+                    appState.foods = appState.foods.filter(f => f.id !== foodId);
+                    saveState();
+                    renderFoodDatabase();
+                    updateLogFoodDropdown();
+                    showToast(`Deleted "${food.name}".`);
+                }
+            );
+        }
+
+        function updateFoodCountBadge() {
+            const badge = document.getElementById('food-count-badge');
+            if (badge) badge.textContent = appState.foods.length;
+        }
+
+        function renderFoodDatabase(filterText = '') {
+            updateFoodCountBadge();
+            const listEl = document.getElementById('food-db-list');
+            const q = filterText.trim().toLowerCase();
+
+            const filtered = appState.foods
+                .filter(f => f.name.toLowerCase().includes(q))
+                .sort((a, b) => a.name.localeCompare(b.name));
+
+            if (filtered.length === 0) {
+                listEl.innerHTML = `
+                    <div class="p-10 text-center text-xs text-slate-400">
+                        ${appState.foods.length === 0 ? 'Your database is empty. Add a custom food on the left!' : `No foods match "${escapeHtml(filterText)}".`}
+                    </div>
+                `;
+                return;
+            }
+
+            listEl.innerHTML = filtered.map(food => {
+                return `
+                    <div class="p-4 sm:px-6 hover:bg-slate-50/70 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div class="space-y-1.5">
+                            <h3 class="text-sm font-semibold text-slate-900">${escapeHtml(food.name)}</h3>
+                            <div class="flex flex-wrap items-center gap-2 text-xs">
+                                <span class="px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 font-medium border border-amber-200/60">
+                                    ${roundNum(food.caloriesPerGram, 3)} kcal/g
+                                </span>
+                                <span class="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 font-medium border border-emerald-200/60">
+                                    ${roundNum(food.proteinPerGram, 3)}g protein/g
+                                </span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5 self-end sm:self-center shrink-0">
+                            <button onclick="editFood('${food.id}')" title="Edit food"
+                                class="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 transition flex items-center gap-1">
+                                <i data-lucide="edit-2" class="w-3.5 h-3.5"></i> Edit
+                            </button>
+                            <button onclick="confirmDeleteFood('${food.id}')" title="Delete food"
+                                class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            lucide.createIcons();
+        }
+
+        document.getElementById('db-search-input').addEventListener('input', (e) => {
+            renderFoodDatabase(e.target.value);
+        });
+
+        // =========================================================================
+        // 5. IMPORT & EXPORT JSON DATABASE
+        // =========================================================================
+        function updateBackupStats() {
+            const foodsEl = document.getElementById('export-stat-foods');
+            const daysEl = document.getElementById('export-stat-days');
+            const targetsEl = document.getElementById('export-stat-targets');
+            if (!foodsEl) return;
+
+            const activeDays = Object.keys(appState.logs).filter(d => Array.isArray(appState.logs[d]) && appState.logs[d].length > 0).length;
+            foodsEl.textContent = `${appState.foods.length} items`;
+            daysEl.textContent = `${activeDays} days`;
+            targetsEl.textContent = `${appState.targets.calories} kcal / ${appState.targets.protein}g`;
+        }
+
+        function exportDatabaseJSON() {
+            try {
+                const payload = {
+                    app: 'NutriGram',
+                    version: 1,
+                    exportedAt: new Date().toISOString(),
+                    data: appState
+                };
+                const jsonStr = JSON.stringify(payload, null, 2);
+                const blob = new Blob([jsonStr], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `nutrigram-backup-${getTodayDateString()}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showToast('Backup JSON downloaded!');
+            } catch (err) {
+                console.error('Export failed:', err);
+                showToast('Failed to export database.', 'error');
+            }
+        }
+
+        function handleFileImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const mode = document.querySelector('input[name="import-mode"]:checked')?.value || 'merge';
+            const reader = new FileReader();
+
+            reader.onload = (e) => {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    const importedData = parsed.data ? parsed.data : parsed;
+
+                    if (!importedData || (!Array.isArray(importedData.foods) && typeof importedData.logs !== 'object')) {
+                        throw new Error('Invalid NutriGram JSON structure.');
+                    }
+
+                    if (mode === 'replace') {
+                        appState = {
+                            targets: {
+                                calories: Number(importedData.targets?.calories) || 2000,
+                                protein: Number(importedData.targets?.protein) || 150
+                            },
+                            foods: Array.isArray(importedData.foods) ? importedData.foods : [],
+                            logs: (importedData.logs && typeof importedData.logs === 'object') ? importedData.logs : {}
+                        };
+                    } else {
+                        // Merge foods by id or case-insensitive name
+                        const existingIds = new Set(appState.foods.map(f => f.id));
+                        const existingNames = new Set(appState.foods.map(f => f.name.toLowerCase()));
+                        (importedData.foods || []).forEach(f => {
+                            if (!existingIds.has(f.id) && !existingNames.has((f.name || '').toLowerCase())) {
+                                appState.foods.push(f);
+                            }
+                        });
+
+                        // Merge logs by entryId
+                        if (importedData.logs && typeof importedData.logs === 'object') {
+                            Object.entries(importedData.logs).forEach(([dateKey, entries]) => {
+                                if (!Array.isArray(entries)) return;
+                                if (!appState.logs[dateKey]) appState.logs[dateKey] = [];
+                                const existingEntryIds = new Set(appState.logs[dateKey].map(item => item.entryId));
+                                entries.forEach(item => {
+                                    if (!existingEntryIds.has(item.entryId)) {
+                                        appState.logs[dateKey].push(item);
+                                    }
+                                });
+                            });
+                        }
+                    }
+
+                    document.getElementById('target-calories').value = appState.targets.calories;
+                    document.getElementById('target-protein').value = appState.targets.protein;
+                    saveState();
+                    renderFoodDatabase();
+                    updateLogFoodDropdown();
+                    renderDashboard();
+                    renderHistory();
+                    showToast(`Database ${mode === 'replace' ? 'restored' : 'merged'} successfully!`);
+                } catch (err) {
+                    console.error('Import error:', err);
+                    showToast('Invalid JSON file. Please select a valid NutriGram backup.', 'error');
+                } finally {
+                    event.target.value = '';
+                }
+            };
+
+            reader.readAsText(file);
+        }
+
+        // =========================================================================
+        // 6. HISTORY VIEW & ANALYTICS
+        // =========================================================================
+        function updateHistoryCountBadge() {
+            const badge = document.getElementById('history-count-badge');
+            if (!badge) return;
+            const activeDays = Object.keys(appState.logs).filter(
+                d => Array.isArray(appState.logs[d]) && appState.logs[d].length > 0
+            ).length;
+            badge.textContent = activeDays;
+        }
+
+        function formatReadableDate(dateStr) {
+            const parts = dateStr.split('-');
+            if (parts.length !== 3) return dateStr;
+            const dateObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+            return dateObj.toLocaleDateString(undefined, {
+                weekday: 'short',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+
+        function openHistoryDateInLog(dateStr) {
+            currentDate = dateStr;
+            const datePicker = document.getElementById('log-date-picker');
+            if (datePicker) datePicker.value = dateStr;
+            renderDashboard();
+            switchTab('dashboard');
+            showToast(`Loaded log for ${formatReadableDate(dateStr)}`);
+        }
+
+        function confirmDeleteHistoryDay(dateStr) {
+            const entries = appState.logs[dateStr] || [];
+            showConfirmModal(
+                'Delete Day History',
+                `Delete all ${entries.length} logged items for ${formatReadableDate(dateStr)}?`,
+                () => {
+                    delete appState.logs[dateStr];
+                    saveState();
+                    renderHistory();
+                    if (currentDate === dateStr) {
+                        renderDashboard();
+                    }
+                    showToast(`Deleted history for ${dateStr}.`);
+                }
+            );
+        }
+
+        function toggleHistoryDetails(dateStr) {
+            const detailsEl = document.getElementById(`history-details-${dateStr}`);
+            const chevronEl = document.getElementById(`history-chevron-${dateStr}`);
+            if (!detailsEl) return;
+            detailsEl.classList.toggle('hidden');
+            if (chevronEl) {
+                chevronEl.classList.toggle('rotate-180');
+            }
+        }
+
+        function renderHistory() {
+            updateHistoryCountBadge();
+            const container = document.getElementById('history-list-container');
+            if (!container) return;
+
+            const activeDates = Object.keys(appState.logs)
+                .filter(d => Array.isArray(appState.logs[d]) && appState.logs[d].length > 0)
+                .sort((a, b) => b.localeCompare(a)); // Most recent first
+
+            const totalDays = activeDates.length;
+            let grandTotalCal = 0;
+            let grandTotalProt = 0;
+
+            const daySummaries = activeDates.map(dateStr => {
+                const entries = appState.logs[dateStr];
+                let dayCal = 0;
+                let dayProt = 0;
+                entries.forEach(item => {
+                    dayCal += Number(item.calories) || 0;
+                    dayProt += Number(item.protein) || 0;
+                });
+                grandTotalCal += dayCal;
+                grandTotalProt += dayProt;
+                return { dateStr, entries, dayCal, dayProt };
+            });
+
+            document.getElementById('history-stat-days').textContent = totalDays;
+            document.getElementById('history-stat-avg-cal').textContent = totalDays > 0
+                ? `${Math.round(grandTotalCal / totalDays).toLocaleString()} kcal`
+                : '0 kcal';
+            document.getElementById('history-stat-avg-prot').textContent = totalDays > 0
+                ? `${roundNum(grandTotalProt / totalDays, 1)} g`
+                : '0.0 g';
+
+            if (daySummaries.length === 0) {
+                container.innerHTML = `
+                    <div class="p-12 text-center text-xs text-slate-400">
+                        No logged history yet. Start logging foods in the <strong>Daily Log & Targets</strong> tab to build your history.
+                    </div>
+                `;
+                return;
+            }
+
+            const calTarget = appState.targets.calories || 0;
+            const protTarget = appState.targets.protein || 0;
+            const todayStr = getTodayDateString();
+
+            container.innerHTML = daySummaries.map(({ dateStr, entries, dayCal, dayProt }) => {
+                const isToday = dateStr === todayStr;
+                const calPct = calTarget > 0 ? Math.min(100, Math.round((dayCal / calTarget) * 100)) : 0;
+                const protPct = protTarget > 0 ? Math.min(100, Math.round((dayProt / protTarget) * 100)) : 0;
+
+                const itemsRows = entries.map(item => `
+                    <div class="flex items-center justify-between py-2 px-3 rounded-lg bg-white border border-slate-100 text-xs">
+                        <div class="font-medium text-slate-800">
+                            ${escapeHtml(item.foodName)} <span class="text-slate-400 font-normal">(${roundNum(item.grams, 1)}g)</span>
+                        </div>
+                        <div class="flex items-center gap-3 shrink-0">
+                            <span class="text-amber-700 font-medium">${roundNum(item.calories, 1)} kcal</span>
+                            <span class="text-brand-700 font-medium">${roundNum(item.protein, 1)}g P</span>
+                        </div>
+                    </div>
+                `).join('');
+
+                return `
+                    <div class="p-5 sm:px-6 hover:bg-slate-50/50 transition">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <!-- Date & Item Count -->
+                            <div class="flex items-center gap-3 cursor-pointer" onclick="toggleHistoryDetails('${dateStr}')">
+                                <div class="w-10 h-10 rounded-xl ${isToday ? 'bg-brand-50 text-brand-700 border border-brand-200' : 'bg-slate-100 text-slate-600'} flex items-center justify-center shrink-0">
+                                    <i data-lucide="calendar" class="w-4 h-4"></i>
+                                </div>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-sm font-semibold text-slate-900">${escapeHtml(formatReadableDate(dateStr))}</span>
+                                        ${isToday ? '<span class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-brand-100 text-brand-700">Today</span>' : ''}
+                                    </div>
+                                    <span class="text-xs text-slate-500">${entries.length} ${entries.length === 1 ? 'food logged' : 'foods logged'}</span>
+                                </div>
+                            </div>
+
+                            <!-- Totals & Mini Progress -->
+                            <div class="flex flex-wrap items-center gap-4 sm:gap-6">
+                                <div class="min-w-[120px]">
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span class="font-semibold text-amber-700">${Math.round(dayCal).toLocaleString()} kcal</span>
+                                        <span class="text-slate-400">${calPct}%</span>
+                                    </div>
+                                    <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                        <div class="h-full bg-amber-500 rounded-full" style="width: ${calPct}%"></div>
+                                    </div>
+                                </div>
+
+                                <div class="min-w-[120px]">
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span class="font-semibold text-brand-700">${roundNum(dayProt, 1)}g protein</span>
+                                        <span class="text-slate-400">${protPct}%</span>
+                                    </div>
+                                    <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                        <div class="h-full bg-brand-600 rounded-full" style="width: ${protPct}%"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Actions -->
+                                <div class="flex items-center gap-1.5 ml-auto sm:ml-0">
+                                    <button onclick="openHistoryDateInLog('${dateStr}')" title="Open & edit in Daily Log"
+                                        class="px-2.5 py-1.5 rounded-lg text-xs font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 transition">
+                                        Open Log
+                                    </button>
+                                    <button onclick="toggleHistoryDetails('${dateStr}')" title="Toggle food details"
+                                        class="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 transition">
+                                        <i id="history-chevron-${dateStr}" data-lucide="chevron-down" class="w-4 h-4 transition-transform duration-200"></i>
+                                    </button>
+                                    <button onclick="confirmDeleteHistoryDay('${dateStr}')" title="Delete this day's log"
+                                        class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition">
+                                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Collapsible Food Breakdown -->
+                        <div id="history-details-${dateStr}" class="hidden mt-4 pt-3 border-t border-slate-100 bg-slate-50/70 rounded-xl p-3 space-y-1.5">
+                            ${itemsRows}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            lucide.createIcons();
+        }
+
+        function confirmFactoryReset() {
+            showConfirmModal(
+                'Reset All Data',
+                'This will erase all custom foods, targets, and logged days and restore starter defaults. Continue?',
+                () => {
+                    localStorage.removeItem(STORAGE_KEY);
+                    appState = {
+                        targets: { calories: 2000, protein: 150 },
+                        foods: [...DEFAULT_FOODS],
+                        logs: {}
+                    };
+                    document.getElementById('target-calories').value = 2000;
+                    document.getElementById('target-protein').value = 150;
+                    saveState();
+                    renderFoodDatabase();
+                    updateLogFoodDropdown();
+                    renderDashboard();
+                    renderHistory();
+                    showToast('App reset to starter defaults.');
+                }
+            );
+        }
+
+        // Initialize App on Window Load
+        window.addEventListener('DOMContentLoaded', () => {
+            loadState();
+            initTargetsAndDate();
+            initFoodSearchSelector();
+            renderFoodDatabase();
+            updateLogFoodDropdown();
+            renderDashboard();
+            renderHistory();
+            updateBackupStats();
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>
