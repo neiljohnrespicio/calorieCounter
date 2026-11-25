@@ -35,8 +35,8 @@
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
 
-    <!-- Toast Notification Container (Replaces alert/confirm) -->
-    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none max-w-md"></div>
 
     <!-- Custom Confirmation Modal -->
     <div id="confirm-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
@@ -49,6 +49,59 @@
             <div class="flex justify-end gap-3">
                 <button id="confirm-cancel-btn" class="px-4 py-2 rounded-xl text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 transition">Cancel</button>
                 <button id="confirm-ok-btn" class="px-4 py-2 rounded-xl text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 transition">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Supabase Connection & Diagnostics Modal -->
+    <div id="supabase-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 border border-slate-100 space-y-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="p-2 rounded-xl bg-emerald-50 text-emerald-600">
+                        <i data-lucide="cloud" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-semibold text-slate-900">Supabase Cloud Connection</h3>
+                        <p class="text-xs text-slate-500">Connect your Supabase Project URL & Publishable/Anon Key</p>
+                    </div>
+                </div>
+                <button onclick="closeSupabaseModal()" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <div class="space-y-3">
+                <div>
+                    <label for="sb-url-input" class="block text-xs font-medium text-slate-700 mb-1">Project URL</label>
+                    <input type="url" id="sb-url-input" placeholder="https://your-project-ref.supabase.co"
+                        class="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                </div>
+                <div>
+                    <label for="sb-key-input" class="block text-xs font-medium text-slate-700 mb-1">Publishable or Anon Public Key</label>
+                    <input type="text" id="sb-key-input" placeholder="sb_publishable_... or eyJ..."
+                        class="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                </div>
+            </div>
+
+            <div id="sb-diagnostic-box" class="rounded-xl bg-slate-50 border border-slate-200/80 p-3 text-xs text-slate-600 space-y-1">
+                <div class="font-semibold text-slate-800">Connection Status:</div>
+                <div id="sb-diagnostic-text">Checking status...</div>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-2 pt-2">
+                <button type="button" onclick="clearSupabaseCredentials()" class="px-3 py-2 rounded-xl text-xs font-medium text-rose-600 hover:bg-rose-50 transition">
+                    Disconnect
+                </button>
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="closeSupabaseModal()" class="px-4 py-2 rounded-xl text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 transition">
+                        Close
+                    </button>
+                    <button type="button" onclick="saveAndTestSupabaseCredentials()" class="px-4 py-2 rounded-xl text-xs font-medium text-white bg-brand-600 hover:bg-brand-700 transition flex items-center gap-1.5">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                        Save & Sync Now
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -66,11 +119,12 @@
                 </div>
             </div>
 
-            <!-- Autosave / Cloud Sync Status Badge -->
-            <div id="autosave-badge" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/70 text-xs font-medium transition-all">
-                <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-emerald-600"></i>
-                <span id="autosave-text">All changes autosaved</span>
-            </div>
+            <!-- Interactive Sync Status Button -->
+            <button type="button" onclick="openSupabaseModal()" id="autosave-badge" title="Click to configure or check Supabase sync"
+                class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-xs font-medium transition-all hover:opacity-90 cursor-pointer">
+                <i id="autosave-icon" data-lucide="cloud" class="w-3.5 h-3.5"></i>
+                <span id="autosave-text">Initializing...</span>
+            </button>
         </div>
 
         <!-- Navigation Tabs -->
@@ -233,7 +287,6 @@
                         </div>
                         <!-- Auto-Suggest Dropdown -->
                         <div id="food-autosuggest-dropdown" class="hidden absolute z-40 left-0 right-0 mt-1.5 bg-white rounded-xl border border-slate-200 shadow-lg max-h-60 overflow-y-auto divide-y divide-slate-100">
-                            <!-- Populated dynamically via JS -->
                         </div>
                     </div>
                     <div class="sm:col-span-3">
@@ -277,7 +330,6 @@
                             </tr>
                         </thead>
                         <tbody id="daily-log-tbody" class="divide-y divide-slate-100 text-sm">
-                            <!-- Populated via JS -->
                         </tbody>
                     </table>
                 </div>
@@ -352,7 +404,6 @@
                     </div>
 
                     <div id="food-db-list" class="divide-y divide-slate-100 overflow-y-auto max-h-[650px]">
-                        <!-- Populated via JS -->
                     </div>
                 </div>
             </div>
@@ -391,7 +442,6 @@
                     </div>
                 </div>
                 <div id="history-list-container" class="divide-y divide-slate-100">
-                    <!-- Populated via JS -->
                 </div>
             </div>
         </section>
@@ -477,7 +527,7 @@
             <div class="bg-white rounded-2xl p-6 border border-rose-200/70 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                     <h3 class="text-sm font-semibold text-rose-700">Reset to Starter Defaults</h3>
-                    <p class="text-xs text-slate-500 mt-0.5">Restore the original sample foods and clear custom logs from local storage and base.</p>
+                    <p class="text-xs text-slate-500 mt-0.5">Restore the original sample foods and clear custom logs from local storage and Supabase.</p>
                 </div>
                 <button onclick="confirmFactoryReset()" class="px-4 py-2 rounded-xl text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition whitespace-nowrap">
                     Reset All Data
@@ -489,28 +539,133 @@
 
     <script>
         // =========================================================================
-        // 0. BASE CONFIGURATION
+        // 0. SUPABASE CONFIGURATION (EDIT HERE OR CLICK BADGE IN APP HEADER)
         // =========================================================================
-        const BASE_URL = 'https://xihtztixddwlewgklmry.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_If0ta8i0tp_zbytAAzVn1Q_c7cNI1z2';
+        const HARDCODED_SUPABASE_URL = 'https://xihtztixddwlewgklmry.supabase.co';
+        const HARDCODED_SUPABASE_KEY = 'sb_publishable_If0ta8i0tp_zbytAAzVn1Q_c7cNI1z2';
 
-        const isSupabaseConfigured =
-            SUPABASE_URL &&
-            !SUPABASE_URL.startsWith('YOUR_') &&
-            SUPABASE_KEY &&
-            !SUPABASE_KEY.startsWith('YOUR_') &&
-            window.supabase &&
-            typeof window.supabase.createClient === 'function';
+        const CREDENTIALS_STORAGE_KEY = 'nutrigram_supabase_creds_v1';
+        const STORAGE_KEY = 'nutrigram_app_state_v1';
 
-        const supabaseClient = isSupabaseConfigured
-            ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
-            : null;
+        let supabaseClient = null;
+        let lastSyncDiagnostic = 'Not connected yet.';
+
+        // Safe storage helpers (falls back gracefully if browser blocks localStorage)
+        function safeStorageGet(key) {
+            try {
+                return window.localStorage.getItem(key);
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function safeStorageSet(key, value) {
+            try {
+                window.localStorage.setItem(key, value);
+                return true;
+            } catch (e) {
+                console.warn('localStorage unavailable:', e);
+                return false;
+            }
+        }
+
+        function safeStorageRemove(key) {
+            try {
+                window.localStorage.removeItem(key);
+            } catch (e) {
+                // ignore
+            }
+        }
+
+        function getActiveSupabaseCredentials() {
+            let savedUrl = '';
+            let savedKey = '';
+            try {
+                const raw = safeStorageGet(CREDENTIALS_STORAGE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    savedUrl = (parsed.url || '').trim();
+                    savedKey = (parsed.key || '').trim();
+                }
+            } catch (e) {
+                // ignore malformed stored creds
+            }
+
+            const url = savedUrl || (HARDCODED_SUPABASE_URL.startsWith('YOUR_') ? '' : HARDCODED_SUPABASE_URL.trim());
+            const key = savedKey || (HARDCODED_SUPABASE_KEY.startsWith('YOUR_') ? '' : HARDCODED_SUPABASE_KEY.trim());
+            return { url, key };
+        }
+
+        function initSupabaseClient() {
+            const { url, key } = getActiveSupabaseCredentials();
+            if (!url || !key) {
+                supabaseClient = null;
+                lastSyncDiagnostic = 'No Supabase URL or Key configured. Click this badge to paste your Project URL and Publishable/Anon Key.';
+                return false;
+            }
+
+            if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+                supabaseClient = null;
+                lastSyncDiagnostic = 'Supabase CDN script failed to load. Check your internet connection.';
+                return false;
+            }
+
+            try {
+                supabaseClient = window.supabase.createClient(url, key);
+                return true;
+            } catch (err) {
+                supabaseClient = null;
+                lastSyncDiagnostic = `Invalid Supabase URL/Key format: ${err.message}`;
+                return false;
+            }
+        }
+
+        function openSupabaseModal() {
+            const { url, key } = getActiveSupabaseCredentials();
+            document.getElementById('sb-url-input').value = url;
+            document.getElementById('sb-key-input').value = key;
+            document.getElementById('sb-diagnostic-text').textContent = lastSyncDiagnostic;
+
+            const modal = document.getElementById('supabase-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            lucide.createIcons();
+        }
+
+        function closeSupabaseModal() {
+            const modal = document.getElementById('supabase-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        async function saveAndTestSupabaseCredentials() {
+            const url = document.getElementById('sb-url-input').value.trim();
+            const key = document.getElementById('sb-key-input').value.trim();
+
+            if (!url || !key) {
+                showToast('Please enter both your Project URL and Publishable/Anon Key.', 'error');
+                return;
+            }
+
+            safeStorageSet(CREDENTIALS_STORAGE_KEY, JSON.stringify({ url, key }));
+            initSupabaseClient();
+            await syncFromSupabase(true);
+            document.getElementById('sb-diagnostic-text').textContent = lastSyncDiagnostic;
+        }
+
+        function clearSupabaseCredentials() {
+            safeStorageRemove(CREDENTIALS_STORAGE_KEY);
+            document.getElementById('sb-url-input').value = '';
+            document.getElementById('sb-key-input').value = '';
+            initSupabaseClient();
+            setSyncBadge('Local mode (click to connect Supabase)', 'local');
+            document.getElementById('sb-diagnostic-text').textContent = lastSyncDiagnostic;
+            showToast('Disconnected Supabase credentials.');
+        }
 
         // =========================================================================
         // 1. STATE MANAGEMENT, LOCAL CACHE & SUPABASE SYNC
         // =========================================================================
-        const STORAGE_KEY = 'nutrigram_app_state_v1';
-
         const DEFAULT_FOODS = [
             {
                 id: 'food_chicken_breast',
@@ -571,21 +726,32 @@
             if (!badge || !text) return;
 
             text.textContent = statusText;
-            badge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all';
+            badge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all hover:opacity-90 cursor-pointer';
 
             if (mode === 'error') {
                 badge.classList.add('bg-rose-50', 'text-rose-700', 'border-rose-200');
             } else if (mode === 'local') {
                 badge.classList.add('bg-amber-50', 'text-amber-700', 'border-amber-200');
+            } else if (mode === 'syncing') {
+                badge.classList.add('bg-sky-50', 'text-sky-700', 'border-sky-200');
             } else {
                 badge.classList.add('bg-emerald-50', 'text-emerald-700', 'border-emerald-200/70');
             }
         }
 
-        // Load from localStorage first for instant UI
+        function pulseBadge() {
+            const badge = document.getElementById('autosave-badge');
+            if (!badge) return;
+            badge.classList.add('ring-2', 'ring-emerald-300');
+            clearTimeout(autosaveTimeout);
+            autosaveTimeout = setTimeout(() => {
+                badge.classList.remove('ring-2', 'ring-emerald-300');
+            }, 800);
+        }
+
         function loadLocalState() {
             try {
-                const raw = localStorage.getItem(STORAGE_KEY);
+                const raw = safeStorageGet(STORAGE_KEY);
                 if (raw) {
                     const parsed = JSON.parse(raw);
                     appState.targets = {
@@ -601,30 +767,38 @@
             } catch (err) {
                 console.error('Failed to load local state:', err);
                 appState.foods = [...DEFAULT_FOODS];
-                showToast('Could not read saved data; loaded defaults.', 'error');
             }
         }
 
         function saveLocalOnly() {
-            try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
-                updateFoodCountBadge();
-                updateHistoryCountBadge();
-                updateBackupStats();
-            } catch (err) {
-                console.error('Local save error:', err);
-            }
+            const ok = safeStorageSet(STORAGE_KEY, JSON.stringify(appState));
+            updateFoodCountBadge();
+            updateHistoryCountBadge();
+            updateBackupStats();
+            return ok;
         }
 
-        // Pull cloud state from Supabase on startup
-        async function syncFromSupabase() {
+        function formatSupabaseError(err) {
+            if (!err) return 'Unknown error';
+            const msg = err.message || String(err);
+            const hint = err.hint ? ` (${err.hint})` : '';
+            const code = err.code ? `[${err.code}] ` : '';
+            return `${code}${msg}${hint}`;
+        }
+
+        // Pull cloud state from Supabase on startup or when credentials are saved
+        async function syncFromSupabase(showSuccessToast = false) {
             if (!supabaseClient) {
-                setSyncBadge('Local storage only (add Supabase keys)', 'local');
+                const localOk = saveLocalOnly();
+                setSyncBadge(
+                    localOk ? 'Local mode (click to connect Supabase)' : 'Memory only (connect Supabase to save)',
+                    localOk ? 'local' : 'error'
+                );
                 return;
             }
 
             try {
-                setSyncBadge('Syncing with Supabase...', 'synced');
+                setSyncBadge('Connecting to Supabase...', 'syncing');
 
                 const [targetsRes, foodsRes, logsRes] = await Promise.all([
                     supabaseClient.from('user_targets').select('*').eq('id', 'default').maybeSingle(),
@@ -679,15 +853,56 @@
                 updateLogFoodDropdown();
                 renderDashboard();
                 renderHistory();
+
+                const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                lastSyncDiagnostic = `Connected and synced successfully at ${now}. (${appState.foods.length} foods, ${logsRes.data?.length || 0} log entries loaded)`;
                 setSyncBadge('Synced with Supabase', 'synced');
+                pulseBadge();
+                if (showSuccessToast) {
+                    showToast('Connected & synced with Supabase!');
+                }
             } catch (err) {
-                console.error('Supabase initial sync error:', err);
-                setSyncBadge('Supabase sync error (using local)', 'error');
-                showToast('Could not sync with Supabase; check URL, key, and SQL tables.', 'error');
+                const readable = formatSupabaseError(err);
+                console.error('Supabase sync error:', err);
+                lastSyncDiagnostic = `Sync failed: ${readable}. Make sure you ran the SQL table creation script and enabled RLS policies.`;
+                setSyncBadge('Supabase error (click for details)', 'error');
+                showToast(`Supabase error: ${readable}`, 'error');
             }
         }
 
-        // Supabase helper mutations
+        // Wrapper that saves locally first, then awaits Supabase write & reports real status
+        async function persistChange(cloudOperationFn) {
+            const localOk = saveLocalOnly();
+
+            if (!supabaseClient) {
+                const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                if (localOk) {
+                    setSyncBadge(`Saved locally at ${now}`, 'local');
+                    pulseBadge();
+                } else {
+                    setSyncBadge('Browser storage blocked — connect Supabase', 'error');
+                    showToast('Browser blocked localStorage. Click the top badge to connect Supabase.', 'error');
+                }
+                return;
+            }
+
+            try {
+                setSyncBadge('Saving to Supabase...', 'syncing');
+                await cloudOperationFn();
+                const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                lastSyncDiagnostic = `Last cloud save succeeded at ${now}.`;
+                setSyncBadge(`Synced at ${now}`, 'synced');
+                pulseBadge();
+            } catch (err) {
+                const readable = formatSupabaseError(err);
+                console.error('Cloud save error:', err);
+                lastSyncDiagnostic = `Save failed: ${readable}`;
+                setSyncBadge('Cloud save failed (click for details)', 'error');
+                showToast(`Failed to save to Supabase: ${readable}`, 'error');
+            }
+        }
+
+        // Supabase database operations
         async function syncTargetsToSupabase() {
             if (!supabaseClient) return;
             const { error } = await supabaseClient
@@ -781,24 +996,6 @@
             }
         }
 
-        function saveState(silent = false) {
-            saveLocalOnly();
-
-            if (!silent) {
-                const badge = document.getElementById('autosave-badge');
-                const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                setSyncBadge(
-                    supabaseClient ? `Saved & synced at ${now}` : `Saved locally at ${now}`,
-                    supabaseClient ? 'synced' : 'local'
-                );
-                badge.classList.add('ring-2', 'ring-emerald-300');
-                clearTimeout(autosaveTimeout);
-                autosaveTimeout = setTimeout(() => {
-                    badge.classList.remove('ring-2', 'ring-emerald-300');
-                }, 900);
-            }
-        }
-
         // =========================================================================
         // 2. NAVIGATION, TABS & UI HELPERS
         // =========================================================================
@@ -847,7 +1044,7 @@
             setTimeout(() => {
                 toast.classList.add('opacity-0', 'translate-y-2');
                 setTimeout(() => toast.remove(), 300);
-            }, 3000);
+            }, isError ? 5000 : 3000);
         }
 
         function showConfirmModal(title, message, onConfirm) {
@@ -907,18 +1104,13 @@
             const handleTargetChange = () => {
                 appState.targets.calories = Math.max(0, parseFloat(calInput.value) || 0);
                 appState.targets.protein = Math.max(0, parseFloat(protInput.value) || 0);
-                saveState();
+                saveLocalOnly();
                 renderDashboard();
 
                 clearTimeout(targetSyncTimer);
-                targetSyncTimer = setTimeout(async () => {
-                    try {
-                        await syncTargetsToSupabase();
-                    } catch (err) {
-                        console.error('Target sync error:', err);
-                        setSyncBadge('Target cloud sync failed', 'error');
-                    }
-                }, 400);
+                targetSyncTimer = setTimeout(() => {
+                    persistChange(() => syncTargetsToSupabase());
+                }, 450);
             };
 
             calInput.addEventListener('input', handleTargetChange);
@@ -1096,8 +1288,9 @@
                 return;
             }
 
-            if (!appState.logs[currentDate]) {
-                appState.logs[currentDate] = [];
+            const targetDate = currentDate;
+            if (!appState.logs[targetDate]) {
+                appState.logs[targetDate] = [];
             }
 
             const logEntry = {
@@ -1109,34 +1302,22 @@
                 protein: food.proteinPerGram * grams
             };
 
-            appState.logs[currentDate].push(logEntry);
+            appState.logs[targetDate].push(logEntry);
             document.getElementById('log-food-grams').value = '';
             updateLogPreview();
-            saveState();
             renderDashboard();
             showToast(`Logged ${grams}g of ${food.name}`);
 
-            try {
-                await insertLogEntryToSupabase(currentDate, logEntry);
-            } catch (err) {
-                console.error('Insert log error:', err);
-                setSyncBadge('Log cloud sync failed', 'error');
-            }
+            await persistChange(() => insertLogEntryToSupabase(targetDate, logEntry));
         });
 
         async function deleteLogEntry(entryId) {
             if (!appState.logs[currentDate]) return;
             appState.logs[currentDate] = appState.logs[currentDate].filter(item => item.entryId !== entryId);
-            saveState();
             renderDashboard();
             showToast('Removed entry from log.');
 
-            try {
-                await deleteLogEntryFromSupabase(entryId);
-            } catch (err) {
-                console.error('Delete log error:', err);
-                setSyncBadge('Delete cloud sync failed', 'error');
-            }
+            await persistChange(() => deleteLogEntryFromSupabase(entryId));
         }
 
         function confirmClearTodayLog() {
@@ -1151,16 +1332,10 @@
                 async () => {
                     const dateToClear = currentDate;
                     appState.logs[dateToClear] = [];
-                    saveState();
                     renderDashboard();
                     showToast('Day log cleared.');
 
-                    try {
-                        await clearDateLogsInSupabase(dateToClear);
-                    } catch (err) {
-                        console.error('Clear date logs error:', err);
-                        setSyncBadge('Reset cloud sync failed', 'error');
-                    }
+                    await persistChange(() => clearDateLogsInSupabase(dateToClear));
                 }
             );
         }
@@ -1303,17 +1478,11 @@
             }
 
             resetFoodForm();
-            saveState();
             renderFoodDatabase();
             updateLogFoodDropdown();
 
             if (foodRecord) {
-                try {
-                    await upsertFoodsToSupabase([foodRecord]);
-                } catch (err) {
-                    console.error('Food sync error:', err);
-                    setSyncBadge('Food cloud sync failed', 'error');
-                }
+                await persistChange(() => upsertFoodsToSupabase([foodRecord]));
             }
         });
 
@@ -1350,17 +1519,11 @@
                 `Delete "${food.name}" from your food database? Existing past logs will remain intact.`,
                 async () => {
                     appState.foods = appState.foods.filter(f => f.id !== foodId);
-                    saveState();
                     renderFoodDatabase();
                     updateLogFoodDropdown();
                     showToast(`Deleted "${food.name}".`);
 
-                    try {
-                        await deleteFoodFromSupabase(foodId);
-                    } catch (err) {
-                        console.error('Delete food error:', err);
-                        setSyncBadge('Food delete sync failed', 'error');
-                    }
+                    await persistChange(() => deleteFoodFromSupabase(foodId));
                 }
             );
         }
@@ -1513,19 +1676,13 @@
 
                     document.getElementById('target-calories').value = appState.targets.calories;
                     document.getElementById('target-protein').value = appState.targets.protein;
-                    saveState();
                     renderFoodDatabase();
                     updateLogFoodDropdown();
                     renderDashboard();
                     renderHistory();
                     showToast(`Database ${mode === 'replace' ? 'restored' : 'merged'} successfully!`);
 
-                    try {
-                        await replaceAllSupabaseData();
-                    } catch (syncErr) {
-                        console.error('Import sync error:', syncErr);
-                        setSyncBadge('Import cloud sync failed', 'error');
-                    }
+                    await persistChange(() => replaceAllSupabaseData());
                 } catch (err) {
                     console.error('Import error:', err);
                     showToast('Invalid JSON file. Please select a valid NutriGram backup.', 'error');
@@ -1577,19 +1734,13 @@
                 `Delete all ${entries.length} logged items for ${formatReadableDate(dateStr)}?`,
                 async () => {
                     delete appState.logs[dateStr];
-                    saveState();
                     renderHistory();
                     if (currentDate === dateStr) {
                         renderDashboard();
                     }
                     showToast(`Deleted history for ${dateStr}.`);
 
-                    try {
-                        await clearDateLogsInSupabase(dateStr);
-                    } catch (err) {
-                        console.error('Delete history day error:', err);
-                        setSyncBadge('History delete sync failed', 'error');
-                    }
+                    await persistChange(() => clearDateLogsInSupabase(dateStr));
                 }
             );
         }
@@ -1737,7 +1888,7 @@
                 'Reset All Data',
                 'This will erase custom foods, targets, and logged days and restore starter defaults. Continue?',
                 async () => {
-                    localStorage.removeItem(STORAGE_KEY);
+                    safeStorageRemove(STORAGE_KEY);
                     appState = {
                         targets: { calories: 2000, protein: 150 },
                         foods: [...DEFAULT_FOODS],
@@ -1745,25 +1896,20 @@
                     };
                     document.getElementById('target-calories').value = 2000;
                     document.getElementById('target-protein').value = 150;
-                    saveState();
                     renderFoodDatabase();
                     updateLogFoodDropdown();
                     renderDashboard();
                     renderHistory();
                     showToast('App reset to starter defaults.');
 
-                    try {
-                        await replaceAllSupabaseData();
-                    } catch (err) {
-                        console.error('Reset cloud sync error:', err);
-                        setSyncBadge('Reset cloud sync failed', 'error');
-                    }
+                    await persistChange(() => replaceAllSupabaseData());
                 }
             );
         }
 
         // Initialize App on Window Load
         window.addEventListener('DOMContentLoaded', async () => {
+            initSupabaseClient();
             loadLocalState();
             initTargetsAndDate();
             initFoodSearchSelector();
