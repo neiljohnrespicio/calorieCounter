@@ -124,159 +124,98 @@
                 </div>
             </div>
 
-            <!-- Interactive Live Sync Status Button -->
-            <button type="button" onclick="openSupabaseModal()" id="autosave-badge" title="Click to configure Desktop ↔ Mobile live sync"
-                class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-xs font-medium transition-all hover:opacity-90 cursor-pointer">
-                <i id="autosave-icon" data-lucide="radio" class="w-3.5 h-3.5"></i>
-                <span id="autosave-text">Initializing...</span>
-            </button>
+            <div class="flex items-center gap-2 sm:gap-3">
+                <!-- Active Date Selector -->
+                <div class="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1.5 rounded-xl border border-slate-200/80">
+                    <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-500"></i>
+                    <input type="date" id="log-date-picker" title="Active Log Date"
+                        class="text-xs font-semibold text-slate-700 bg-transparent border-none focus:outline-none cursor-pointer">
+                </div>
+
+                <!-- Interactive Live Sync Status Button -->
+                <button type="button" onclick="openSupabaseModal()" id="autosave-badge" title="Click to configure Desktop ↔ Mobile live sync"
+                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-xs font-medium transition-all hover:opacity-90 cursor-pointer">
+                    <i id="autosave-icon" data-lucide="radio" class="w-3.5 h-3.5"></i>
+                    <span id="autosave-text">Initializing...</span>
+                </button>
+            </div>
         </div>
 
-        <!-- Navigation Tabs -->
-        <div class="max-w-6xl mx-auto px-4 sm:px-6 flex gap-1 overflow-x-auto no-scrollbar">
-            <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn active flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 border-brand-600 text-brand-700 whitespace-nowrap transition">
-                <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
-                Daily Log & Targets
+        <!-- Separate Top-Level Navigation Tabs -->
+        <nav aria-label="Primary Sections" class="max-w-6xl mx-auto px-4 sm:px-6 flex gap-1 overflow-x-auto no-scrollbar">
+            <button type="button" onclick="switchTab('food-logs')" id="tab-food-logs"
+                class="tab-btn active flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 border-brand-600 text-brand-700 whitespace-nowrap transition">
+                <i data-lucide="utensils-crossed" class="w-4 h-4"></i>
+                Food Logs
+                <span id="log-tab-badge" class="ml-0.5 px-2 py-0.5 text-xs rounded-full bg-brand-50 text-brand-700 font-semibold">0</span>
             </button>
-            <button onclick="switchTab('database')" id="tab-database" class="tab-btn flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap transition">
+            <button type="button" onclick="switchTab('daily-target')" id="tab-daily-target"
+                class="tab-btn flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap transition">
+                <i data-lucide="target" class="w-4 h-4"></i>
+                Daily Target
+            </button>
+            <button type="button" onclick="switchTab('database')" id="tab-database"
+                class="tab-btn flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap transition">
                 <i data-lucide="database" class="w-4 h-4"></i>
                 Food Database
-                <span id="food-count-badge" class="ml-1 px-2 py-0.5 text-xs rounded-full bg-slate-100 text-slate-600">0</span>
+                <span id="food-count-badge" class="ml-0.5 px-2 py-0.5 text-xs rounded-full bg-slate-100 text-slate-600">0</span>
             </button>
-            <button onclick="switchTab('history')" id="tab-history" class="tab-btn flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap transition">
+            <button type="button" onclick="switchTab('history')" id="tab-history"
+                class="tab-btn flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap transition">
                 <i data-lucide="calendar-days" class="w-4 h-4"></i>
                 History
-                <span id="history-count-badge" class="ml-1 px-2 py-0.5 text-xs rounded-full bg-slate-100 text-slate-600">0</span>
+                <span id="history-count-badge" class="ml-0.5 px-2 py-0.5 text-xs rounded-full bg-slate-100 text-slate-600">0</span>
             </button>
-            <button onclick="switchTab('backup')" id="tab-backup" class="tab-btn flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap transition">
+            <button type="button" onclick="switchTab('backup')" id="tab-backup"
+                class="tab-btn flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap transition">
                 <i data-lucide="hard-drive-download" class="w-4 h-4"></i>
                 Import & Export
             </button>
-        </div>
+        </nav>
     </header>
 
     <!-- Main Content Area -->
     <main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8">
 
         <!-- ========================================== -->
-        <!-- TAB 1: DAILY LOG & TARGETS                 -->
+        <!-- TAB 1: FOOD LOGS (SEPARATE TAB)            -->
         <!-- ========================================== -->
-        <section id="view-dashboard" class="space-y-6">
+        <section id="view-food-logs" class="space-y-6">
 
-            <!-- Top Grid: Targets & Progress -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-                <!-- Daily Targets Setup Card -->
-                <div class="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs flex flex-col justify-between">
+            <!-- Compact Remaining Summary Bar -->
+            <div class="bg-white rounded-2xl p-4 sm:px-6 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="flex flex-wrap items-center gap-4 sm:gap-6">
                     <div>
-                        <div class="flex items-center justify-between mb-4">
-                            <h2 class="text-base font-semibold text-slate-900 flex items-center gap-2">
-                                <i data-lucide="target" class="w-4 h-4 text-brand-600"></i>
-                                Daily Targets
-                            </h2>
-                            <span class="text-xs text-slate-400">Auto-updates</span>
-                        </div>
-                        <div class="space-y-4">
-                            <div>
-                                <label for="target-calories" class="block text-xs font-medium text-slate-600 mb-1">Daily Calorie Target (kcal)</label>
-                                <div class="relative">
-                                    <input type="number" id="target-calories" min="0" step="10" placeholder="2000"
-                                        class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition">
-                                    <span class="absolute right-3.5 top-2.5 text-xs font-medium text-slate-400">kcal</span>
-                                </div>
-                            </div>
-                            <div>
-                                <label for="target-protein" class="block text-xs font-medium text-slate-600 mb-1">Daily Protein Target (g)</label>
-                                <div class="relative">
-                                    <input type="number" id="target-protein" min="0" step="1" placeholder="150"
-                                        class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition">
-                                    <span class="absolute right-3.5 top-2.5 text-xs font-medium text-slate-400">grams</span>
-                                </div>
-                            </div>
+                        <span class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400">Calories Remaining</span>
+                        <div class="flex items-baseline gap-1.5 mt-0.5">
+                            <span id="log-strip-cal-left" class="text-lg font-bold text-slate-900">2,000 kcal</span>
+                            <span class="text-xs text-slate-400">(<span id="log-strip-cal-used">0</span> / <span id="log-strip-cal-target">2,000</span>)</span>
                         </div>
                     </div>
-                    <div class="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                        <span>Log Date:</span>
-                        <input type="date" id="log-date-picker" class="font-medium text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg border-none focus:ring-2 focus:ring-brand-500">
-                    </div>
-                </div>
-
-                <!-- Visual Progress Bars Card -->
-                <div class="lg:col-span-2 bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs flex flex-col justify-between">
+                    <div class="h-8 w-px bg-slate-200 hidden sm:block"></div>
                     <div>
-                        <div class="flex items-center justify-between mb-5">
-                            <h2 class="text-base font-semibold text-slate-900 flex items-center gap-2">
-                                <i data-lucide="activity" class="w-4 h-4 text-brand-600"></i>
-                                Today's Remaining Targets
-                            </h2>
-                            <button onclick="confirmClearTodayLog()" class="text-xs text-rose-600 hover:text-rose-700 font-medium flex items-center gap-1 px-2.5 py-1 rounded-lg hover:bg-rose-50 transition">
-                                <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
-                                Reset Day
-                            </button>
-                        </div>
-
-                        <!-- Minimalist Circular Remaining Target Charts -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 py-2">
-                            <!-- Calories Circular Ring -->
-                            <div class="flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-50/70 border border-slate-100">
-                                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Calories</span>
-                                <div class="relative w-36 h-36 flex items-center justify-center">
-                                    <svg class="w-full h-full -rotate-90 transform" viewBox="0 0 120 120">
-                                        <circle cx="60" cy="60" r="52" stroke="currentColor" stroke-width="8" fill="transparent" class="text-slate-200/80" />
-                                        <circle id="cal-ring-progress" cx="60" cy="60" r="52" stroke="currentColor" stroke-width="8" stroke-linecap="round" fill="transparent"
-                                            stroke-dasharray="326.7256" stroke-dashoffset="326.7256"
-                                            class="text-amber-500 transition-all duration-500 ease-out" />
-                                    </svg>
-                                    <div class="absolute inset-0 flex flex-col items-center justify-center text-center px-2">
-                                        <span id="cal-ring-main" class="text-xl font-bold text-slate-900 leading-tight">2,000</span>
-                                        <span id="cal-ring-sub" class="text-[11px] font-medium text-slate-500 mt-0.5">kcal left</span>
-                                    </div>
-                                </div>
-                                <div class="mt-3 text-xs text-slate-500 font-medium">
-                                    <span id="cal-consumed" class="text-slate-800 font-semibold">0</span> / <span id="cal-target-display">2000</span> kcal
-                                </div>
-                            </div>
-
-                            <!-- Protein Circular Ring -->
-                            <div class="flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-50/70 border border-slate-100">
-                                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Protein</span>
-                                <div class="relative w-36 h-36 flex items-center justify-center">
-                                    <svg class="w-full h-full -rotate-90 transform" viewBox="0 0 120 120">
-                                        <circle cx="60" cy="60" r="52" stroke="currentColor" stroke-width="8" fill="transparent" class="text-slate-200/80" />
-                                        <circle id="prot-ring-progress" cx="60" cy="60" r="52" stroke="currentColor" stroke-width="8" stroke-linecap="round" fill="transparent"
-                                            stroke-dasharray="326.7256" stroke-dashoffset="326.7256"
-                                            class="text-brand-600 transition-all duration-500 ease-out" />
-                                    </svg>
-                                    <div class="absolute inset-0 flex flex-col items-center justify-center text-center px-2">
-                                        <span id="prot-ring-main" class="text-xl font-bold text-brand-700 leading-tight">150.0g</span>
-                                        <span id="prot-ring-sub" class="text-[11px] font-medium text-slate-500 mt-0.5">left</span>
-                                    </div>
-                                </div>
-                                <div class="mt-3 text-xs text-slate-500 font-medium">
-                                    <span id="prot-consumed" class="text-slate-800 font-semibold">0.0</span> / <span id="prot-target-display">150</span> g
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Micronutrients Summary Pills -->
-                    <div class="mt-5 pt-4 border-t border-slate-100">
-                        <div class="flex items-center justify-between mb-2.5">
-                            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Micronutrients Logged Today</span>
-                        </div>
-                        <div id="daily-micros-summary" class="flex flex-wrap gap-2">
-                            <span class="text-xs text-slate-400 italic">No micronutrients logged yet today.</span>
+                        <span class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400">Protein Remaining</span>
+                        <div class="flex items-baseline gap-1.5 mt-0.5">
+                            <span id="log-strip-prot-left" class="text-lg font-bold text-brand-700">150.0g</span>
+                            <span class="text-xs text-slate-400">(<span id="log-strip-prot-used">0.0</span> / <span id="log-strip-prot-target">150</span>g)</span>
                         </div>
                     </div>
                 </div>
+                <button type="button" onclick="switchTab('daily-target')" class="self-start sm:self-center text-xs font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 px-3 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer">
+                    <i data-lucide="target" class="w-3.5 h-3.5"></i>
+                    Open Daily Target Tab
+                </button>
             </div>
 
-            <!-- Middle Section: Quick Log Food Form -->
+            <!-- Quick Log Food Form -->
             <div class="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs">
-                <h2 class="text-base font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                    <i data-lucide="plus-circle" class="w-4 h-4 text-brand-600"></i>
-                    Log Food Intake
-                </h2>
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-base font-semibold text-slate-900 flex items-center gap-2">
+                        <i data-lucide="plus-circle" class="w-4 h-4 text-brand-600"></i>
+                        Log Food Intake
+                    </h2>
+                    <span id="log-active-date-label" class="text-xs font-medium text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg"></span>
+                </div>
                 <form id="log-food-form" class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-end">
                     <div class="sm:col-span-6 relative" id="food-search-wrapper">
                         <label for="log-food-search" class="block text-xs font-medium text-slate-600 mb-1">Search & Select Food from Database</label>
@@ -313,13 +252,19 @@
                 </div>
             </div>
 
-            <!-- Bottom Section: Today's Logged Entries Table -->
+            <!-- Logged Entries Table -->
             <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
-                <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                <div class="px-6 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
                     <h2 class="text-base font-semibold text-slate-900">Logged Foods (<span id="logged-items-count">0</span>)</h2>
-                    <button onclick="switchTab('database')" class="text-xs font-medium text-brand-600 hover:text-brand-700 flex items-center gap-1">
-                        <i data-lucide="plus" class="w-3.5 h-3.5"></i> Create New Food
-                    </button>
+                    <div class="flex items-center gap-3">
+                        <button type="button" onclick="confirmClearTodayLog()" class="text-xs text-rose-600 hover:text-rose-700 font-medium flex items-center gap-1 px-2.5 py-1 rounded-lg hover:bg-rose-50 transition cursor-pointer">
+                            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                            Reset Day
+                        </button>
+                        <button type="button" onclick="switchTab('database')" class="text-xs font-medium text-brand-600 hover:text-brand-700 flex items-center gap-1 cursor-pointer">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i> Create New Food
+                        </button>
+                    </div>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
@@ -341,7 +286,130 @@
 
 
         <!-- ========================================== -->
-        <!-- TAB 2: FOOD DATABASE MANAGEMENT            -->
+        <!-- TAB 2: DAILY TARGET (SEPARATE TAB)         -->
+        <!-- ========================================== -->
+        <section id="view-daily-target" class="hidden space-y-6">
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                <!-- Daily Target Setup Card -->
+                <div class="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-base font-semibold text-slate-900 flex items-center gap-2">
+                                <i data-lucide="sliders" class="w-4 h-4 text-brand-600"></i>
+                                Daily Target Settings
+                            </h2>
+                            <span class="text-xs text-slate-400">Auto-syncs</span>
+                        </div>
+                        <p class="text-xs text-slate-500 mb-5 leading-relaxed">
+                            Set your daily calorie target and daily protein target. Updates sync automatically between desktop and mobile.
+                        </p>
+                        <div class="space-y-4">
+                            <div>
+                                <label for="target-calories" class="block text-xs font-medium text-slate-600 mb-1">Daily Calorie Target (kcal)</label>
+                                <div class="relative">
+                                    <input type="number" id="target-calories" min="0" step="10" placeholder="2000"
+                                        class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition">
+                                    <span class="absolute right-3.5 top-2.5 text-xs font-medium text-slate-400">kcal</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label for="target-protein" class="block text-xs font-medium text-slate-600 mb-1">Daily Protein Target (g)</label>
+                                <div class="relative">
+                                    <input type="number" id="target-protein" min="0" step="1" placeholder="150"
+                                        class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition">
+                                    <span class="absolute right-3.5 top-2.5 text-xs font-medium text-slate-400">grams</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 pt-4 border-t border-slate-100">
+                        <button type="button" onclick="switchTab('food-logs')" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-medium text-xs py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer">
+                            <i data-lucide="utensils-crossed" class="w-3.5 h-3.5"></i>
+                            Back to Food Logs Tab
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Visual Daily Target Rings & Summary -->
+                <div class="lg:col-span-2 bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-5">
+                            <h2 class="text-base font-semibold text-slate-900 flex items-center gap-2">
+                                <i data-lucide="activity" class="w-4 h-4 text-brand-600"></i>
+                                Daily Target Progress
+                            </h2>
+                            <span id="targets-active-date-label" class="text-xs font-medium text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg"></span>
+                        </div>
+
+                        <!-- Circular Remaining Target Charts -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 py-2">
+                            <!-- Calories Circular Ring -->
+                            <div class="flex flex-col items-center justify-center p-5 rounded-2xl bg-slate-50/70 border border-slate-100">
+                                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Calories</span>
+                                <div class="relative w-40 h-40 flex items-center justify-center">
+                                    <svg class="w-full h-full -rotate-90 transform" viewBox="0 0 120 120">
+                                        <circle cx="60" cy="60" r="52" stroke="currentColor" stroke-width="8" fill="transparent" class="text-slate-200/80" />
+                                        <circle id="cal-ring-progress" cx="60" cy="60" r="52" stroke="currentColor" stroke-width="8" stroke-linecap="round" fill="transparent"
+                                            stroke-dasharray="326.7256" stroke-dashoffset="326.7256"
+                                            class="text-amber-500 transition-all duration-500 ease-out" />
+                                    </svg>
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center text-center px-2">
+                                        <span id="cal-ring-main" class="text-2xl font-bold text-slate-900 leading-tight">2,000</span>
+                                        <span id="cal-ring-sub" class="text-[11px] font-medium text-slate-500 mt-0.5">kcal left</span>
+                                    </div>
+                                </div>
+                                <div class="mt-3 text-xs text-slate-500 font-medium">
+                                    <span id="cal-consumed" class="text-slate-800 font-semibold">0</span> / <span id="cal-target-display">2000</span> kcal (<span id="cal-pct-display">0%</span>)
+                                </div>
+                            </div>
+
+                            <!-- Protein Circular Ring -->
+                            <div class="flex flex-col items-center justify-center p-5 rounded-2xl bg-slate-50/70 border border-slate-100">
+                                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Protein</span>
+                                <div class="relative w-40 h-40 flex items-center justify-center">
+                                    <svg class="w-full h-full -rotate-90 transform" viewBox="0 0 120 120">
+                                        <circle cx="60" cy="60" r="52" stroke="currentColor" stroke-width="8" fill="transparent" class="text-slate-200/80" />
+                                        <circle id="prot-ring-progress" cx="60" cy="60" r="52" stroke="currentColor" stroke-width="8" stroke-linecap="round" fill="transparent"
+                                            stroke-dasharray="326.7256" stroke-dashoffset="326.7256"
+                                            class="text-brand-600 transition-all duration-500 ease-out" />
+                                    </svg>
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center text-center px-2">
+                                        <span id="prot-ring-main" class="text-2xl font-bold text-brand-700 leading-tight">150.0g</span>
+                                        <span id="prot-ring-sub" class="text-[11px] font-medium text-slate-500 mt-0.5">left</span>
+                                    </div>
+                                </div>
+                                <div class="mt-3 text-xs text-slate-500 font-medium">
+                                    <span id="prot-consumed" class="text-slate-800 font-semibold">0.0</span> / <span id="prot-target-display">150</span> g (<span id="prot-pct-display">0%</span>)
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Macro Ratio & Summary Metrics -->
+                    <div class="mt-6 pt-4 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                        <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                            <span class="text-slate-400 block">Protein Calories</span>
+                            <span id="target-stat-prot-kcal" class="text-sm font-semibold text-slate-900 mt-0.5 block">0 kcal</span>
+                        </div>
+                        <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                            <span class="text-slate-400 block">Target Protein Share</span>
+                            <span id="target-stat-prot-share" class="text-sm font-semibold text-brand-700 mt-0.5 block">30% of calories</span>
+                        </div>
+                        <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                            <span class="text-slate-400 block">Logged Meals Today</span>
+                            <span id="target-stat-meals" class="text-sm font-semibold text-slate-900 mt-0.5 block">0 items</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ========================================== -->
+        <!-- TAB 3: FOOD DATABASE MANAGEMENT            -->
         <!-- ========================================== -->
         <section id="view-database" class="hidden space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -353,7 +421,7 @@
                             <i data-lucide="utensils" class="w-4 h-4 text-brand-600"></i>
                             Add Custom Food
                         </h2>
-                        <button id="cancel-edit-food-btn" onclick="resetFoodForm()" class="hidden text-xs text-slate-500 hover:text-slate-800 underline">
+                        <button type="button" id="cancel-edit-food-btn" onclick="resetFoodForm()" class="hidden text-xs text-slate-500 hover:text-slate-800 underline">
                             Cancel Edit
                         </button>
                     </div>
@@ -414,7 +482,7 @@
 
 
         <!-- ========================================== -->
-        <!-- TAB 3: LOG HISTORY                         -->
+        <!-- TAB 4: LOG HISTORY                         -->
         <!-- ========================================== -->
         <section id="view-history" class="hidden space-y-6">
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -439,7 +507,7 @@
                             <i data-lucide="history" class="w-4 h-4 text-brand-600"></i>
                             Daily Nutrition History
                         </h2>
-                        <p class="text-xs text-slate-500 mt-0.5">Click any date card to view item breakdown or open it in the Daily Log.</p>
+                        <p class="text-xs text-slate-500 mt-0.5">Click any date card to view item breakdown or open it in Food Logs.</p>
                     </div>
                 </div>
                 <div id="history-list-container" class="divide-y divide-slate-100">
@@ -449,7 +517,7 @@
 
 
         <!-- ========================================== -->
-        <!-- TAB 4: IMPORT & EXPORT DATABASE            -->
+        <!-- TAB 5: IMPORT & EXPORT DATABASE            -->
         <!-- ========================================== -->
         <section id="view-backup" class="hidden space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -479,7 +547,7 @@
                             </div>
                         </div>
                     </div>
-                    <button onclick="exportDatabaseJSON()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium text-sm py-3 px-4 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer">
+                    <button type="button" onclick="exportDatabaseJSON()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium text-sm py-3 px-4 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer">
                         <i data-lucide="file-json" class="w-4 h-4"></i>
                         Download Backup (.json)
                     </button>
@@ -516,7 +584,7 @@
 
                     <div>
                         <input type="file" id="import-file-input" accept=".json,application/json" class="hidden" onchange="handleFileImport(event)">
-                        <button onclick="document.getElementById('import-file-input').click()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm py-3 px-4 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer">
+                        <button type="button" onclick="document.getElementById('import-file-input').click()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm py-3 px-4 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer">
                             <i data-lucide="folder-up" class="w-4 h-4"></i>
                             Select JSON File to Import
                         </button>
@@ -530,7 +598,7 @@
                     <h3 class="text-sm font-semibold text-rose-700">Reset to Starter Defaults</h3>
                     <p class="text-xs text-slate-500 mt-0.5">Restore the original sample foods and clear custom logs from local storage and Supabase.</p>
                 </div>
-                <button onclick="confirmFactoryReset()" class="px-4 py-2 rounded-xl text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition whitespace-nowrap">
+                <button type="button" onclick="confirmFactoryReset()" class="px-4 py-2 rounded-xl text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition whitespace-nowrap cursor-pointer">
                     Reset All Data
                 </button>
             </div>
@@ -927,8 +995,7 @@
                 saveLocalOnly();
                 renderFoodDatabase();
                 updateLogFoodDropdown();
-                renderDashboard();
-                renderHistory();
+                renderAllViews();
 
                 const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 lastSyncDiagnostic = `Live sync active on "${workspaceId}". Last synced at ${now}. (${appState.foods.length} foods, ${logsRes.data?.length || 0} log entries)`;
@@ -1093,7 +1160,7 @@
         // 2. NAVIGATION, TABS & UI HELPERS
         // =========================================================================
         function switchTab(tabName) {
-            const tabs = ['dashboard', 'database', 'history', 'backup'];
+            const tabs = ['food-logs', 'daily-target', 'database', 'history', 'backup'];
             tabs.forEach(t => {
                 const viewEl = document.getElementById(`view-${t}`);
                 const btnEl = document.getElementById(`tab-${t}`);
@@ -1110,12 +1177,22 @@
                 }
             });
 
-            if (tabName === 'history') {
+            if (tabName === 'food-logs') {
+                renderFoodLogsTab();
+            } else if (tabName === 'daily-target') {
+                renderDailyTargetTab();
+            } else if (tabName === 'history') {
                 renderHistory();
             } else if (tabName === 'backup') {
                 updateBackupStats();
             }
             lucide.createIcons();
+        }
+
+        function renderAllViews() {
+            renderFoodLogsTab();
+            renderDailyTargetTab();
+            renderHistory();
         }
 
         function showToast(message, type = 'success') {
@@ -1198,7 +1275,8 @@
                 appState.targets.calories = Math.max(0, parseFloat(calInput.value) || 0);
                 appState.targets.protein = Math.max(0, parseFloat(protInput.value) || 0);
                 saveLocalOnly();
-                renderDashboard();
+                renderFoodLogsTab();
+                renderDailyTargetTab();
 
                 clearTimeout(targetSyncTimer);
                 targetSyncTimer = setTimeout(() => {
@@ -1212,7 +1290,8 @@
             datePicker.addEventListener('change', (e) => {
                 if (e.target.value) {
                     currentDate = e.target.value;
-                    renderDashboard();
+                    renderFoodLogsTab();
+                    renderDailyTargetTab();
                 }
             });
         }
@@ -1398,7 +1477,8 @@
             appState.logs[targetDate].push(logEntry);
             document.getElementById('log-food-grams').value = '';
             updateLogPreview();
-            renderDashboard();
+            renderFoodLogsTab();
+            renderDailyTargetTab();
             showToast(`Logged ${grams}g of ${food.name}`);
 
             await persistChange(() => insertLogEntryToSupabase(targetDate, logEntry));
@@ -1407,7 +1487,8 @@
         async function deleteLogEntry(entryId) {
             if (!appState.logs[currentDate]) return;
             appState.logs[currentDate] = appState.logs[currentDate].filter(item => item.entryId !== entryId);
-            renderDashboard();
+            renderFoodLogsTab();
+            renderDailyTargetTab();
             showToast('Removed entry from log.');
 
             await persistChange(() => deleteLogEntryFromSupabase(entryId));
@@ -1425,7 +1506,8 @@
                 async () => {
                     const dateToClear = currentDate;
                     appState.logs[dateToClear] = [];
-                    renderDashboard();
+                    renderFoodLogsTab();
+                    renderDailyTargetTab();
                     showToast('Day log cleared.');
 
                     await persistChange(() => clearDateLogsInSupabase(dateToClear));
@@ -1434,69 +1516,55 @@
         }
 
         // =========================================================================
-        // 3C. DASHBOARD RENDERING (RINGS & LOG TABLE)
+        // 3C. SEPARATE RENDERERS: FOOD LOGS TAB & DAILY TARGET TAB
         // =========================================================================
-        function renderDashboard() {
-            const entries = appState.logs[currentDate] || [];
-            document.getElementById('logged-items-count').textContent = entries.length;
-
+        function getDayTotals(dateStr) {
+            const entries = appState.logs[dateStr] || [];
             let totalCal = 0;
             let totalProt = 0;
-
             entries.forEach(entry => {
                 totalCal += Number(entry.calories) || 0;
                 totalProt += Number(entry.protein) || 0;
             });
+            return { entries, totalCal, totalProt };
+        }
 
+        function renderFoodLogsTab() {
+            const { entries, totalCal, totalProt } = getDayTotals(currentDate);
             const calTarget = appState.targets.calories || 0;
             const protTarget = appState.targets.protein || 0;
 
-            document.getElementById('cal-consumed').textContent = Math.round(totalCal).toLocaleString();
-            document.getElementById('cal-target-display').textContent = calTarget.toLocaleString();
-            const calRatio = calTarget > 0 ? Math.min(1, totalCal / calTarget) : 0;
-            const calOffset = RING_CIRCUMFERENCE * (1 - calRatio);
-            const calRing = document.getElementById('cal-ring-progress');
-            calRing.style.strokeDashoffset = calOffset;
+            document.getElementById('logged-items-count').textContent = entries.length;
+            document.getElementById('log-tab-badge').textContent = entries.length;
+            document.getElementById('log-active-date-label').textContent = formatReadableDate(currentDate);
 
+            // Compact summary strip
             const calDiff = calTarget - totalCal;
-            const calMainEl = document.getElementById('cal-ring-main');
-            const calSubEl = document.getElementById('cal-ring-sub');
+            const protDiff = protTarget - totalProt;
+            const stripCalEl = document.getElementById('log-strip-cal-left');
+            const stripProtEl = document.getElementById('log-strip-prot-left');
 
             if (calDiff >= 0) {
-                calRing.classList.remove('text-rose-500');
-                calRing.classList.add('text-amber-500');
-                calMainEl.className = 'text-xl font-bold text-slate-900 leading-tight';
-                calMainEl.textContent = Math.round(calDiff).toLocaleString();
-                calSubEl.textContent = 'kcal left';
+                stripCalEl.className = 'text-lg font-bold text-slate-900';
+                stripCalEl.textContent = `${Math.round(calDiff).toLocaleString()} kcal`;
             } else {
-                calRing.classList.remove('text-amber-500');
-                calRing.classList.add('text-rose-500');
-                calMainEl.className = 'text-lg font-bold text-rose-600 leading-tight';
-                calMainEl.textContent = `+${Math.abs(Math.round(calDiff)).toLocaleString()}`;
-                calSubEl.textContent = 'kcal over';
+                stripCalEl.className = 'text-lg font-bold text-rose-600';
+                stripCalEl.textContent = `+${Math.abs(Math.round(calDiff)).toLocaleString()} kcal over`;
             }
-
-            document.getElementById('prot-consumed').textContent = roundNum(totalProt, 1);
-            document.getElementById('prot-target-display').textContent = protTarget;
-            const protRatio = protTarget > 0 ? Math.min(1, totalProt / protTarget) : 0;
-            const protOffset = RING_CIRCUMFERENCE * (1 - protRatio);
-            const protRing = document.getElementById('prot-ring-progress');
-            protRing.style.strokeDashoffset = protOffset;
-
-            const protDiff = protTarget - totalProt;
-            const protMainEl = document.getElementById('prot-ring-main');
-            const protSubEl = document.getElementById('prot-ring-sub');
+            document.getElementById('log-strip-cal-used').textContent = Math.round(totalCal).toLocaleString();
+            document.getElementById('log-strip-cal-target').textContent = calTarget.toLocaleString();
 
             if (protDiff >= 0) {
-                protMainEl.className = 'text-xl font-bold text-brand-700 leading-tight';
-                protMainEl.textContent = `${roundNum(protDiff, 1)}g`;
-                protSubEl.textContent = 'left';
+                stripProtEl.className = 'text-lg font-bold text-brand-700';
+                stripProtEl.textContent = `${roundNum(protDiff, 1)}g`;
             } else {
-                protMainEl.className = 'text-lg font-bold text-emerald-600 leading-tight';
-                protMainEl.textContent = `+${roundNum(Math.abs(protDiff), 1)}g`;
-                protSubEl.textContent = 'over target';
+                stripProtEl.className = 'text-lg font-bold text-emerald-600';
+                stripProtEl.textContent = `+${roundNum(Math.abs(protDiff), 1)}g over`;
             }
+            document.getElementById('log-strip-prot-used').textContent = roundNum(totalProt, 1);
+            document.getElementById('log-strip-prot-target').textContent = protTarget;
 
+            // Logged Foods Table
             const tbody = document.getElementById('daily-log-tbody');
             if (entries.length === 0) {
                 tbody.innerHTML = `
@@ -1515,8 +1583,8 @@
                             <td class="py-3.5 px-4 font-semibold text-amber-700">${roundNum(entry.calories, 1)} kcal</td>
                             <td class="py-3.5 px-4 font-semibold text-brand-700">${roundNum(entry.protein, 1)}g</td>
                             <td class="py-3.5 px-6 text-right">
-                                <button onclick="deleteLogEntry('${entry.entryId}')" title="Delete entry"
-                                    class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition">
+                                <button type="button" onclick="deleteLogEntry('${entry.entryId}')" title="Delete entry"
+                                    class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer">
                                     <i data-lucide="trash-2" class="w-4 h-4"></i>
                                 </button>
                             </td>
@@ -1526,6 +1594,75 @@
             }
 
             lucide.createIcons();
+        }
+
+        function renderDailyTargetTab() {
+            const { entries, totalCal, totalProt } = getDayTotals(currentDate);
+            const calTarget = appState.targets.calories || 0;
+            const protTarget = appState.targets.protein || 0;
+
+            document.getElementById('targets-active-date-label').textContent = formatReadableDate(currentDate);
+
+            // Calories Circle Ring
+            document.getElementById('cal-consumed').textContent = Math.round(totalCal).toLocaleString();
+            document.getElementById('cal-target-display').textContent = calTarget.toLocaleString();
+            const calPctRaw = calTarget > 0 ? Math.round((totalCal / calTarget) * 100) : 0;
+            document.getElementById('cal-pct-display').textContent = `${calPctRaw}%`;
+
+            const calRatio = calTarget > 0 ? Math.min(1, totalCal / calTarget) : 0;
+            const calOffset = RING_CIRCUMFERENCE * (1 - calRatio);
+            const calRing = document.getElementById('cal-ring-progress');
+            calRing.style.strokeDashoffset = calOffset;
+
+            const calDiff = calTarget - totalCal;
+            const calMainEl = document.getElementById('cal-ring-main');
+            const calSubEl = document.getElementById('cal-ring-sub');
+
+            if (calDiff >= 0) {
+                calRing.classList.remove('text-rose-500');
+                calRing.classList.add('text-amber-500');
+                calMainEl.className = 'text-2xl font-bold text-slate-900 leading-tight';
+                calMainEl.textContent = Math.round(calDiff).toLocaleString();
+                calSubEl.textContent = 'kcal left';
+            } else {
+                calRing.classList.remove('text-amber-500');
+                calRing.classList.add('text-rose-500');
+                calMainEl.className = 'text-xl font-bold text-rose-600 leading-tight';
+                calMainEl.textContent = `+${Math.abs(Math.round(calDiff)).toLocaleString()}`;
+                calSubEl.textContent = 'kcal over';
+            }
+
+            // Protein Circle Ring
+            document.getElementById('prot-consumed').textContent = roundNum(totalProt, 1);
+            document.getElementById('prot-target-display').textContent = protTarget;
+            const protPctRaw = protTarget > 0 ? Math.round((totalProt / protTarget) * 100) : 0;
+            document.getElementById('prot-pct-display').textContent = `${protPctRaw}%`;
+
+            const protRatio = protTarget > 0 ? Math.min(1, totalProt / protTarget) : 0;
+            const protOffset = RING_CIRCUMFERENCE * (1 - protRatio);
+            const protRing = document.getElementById('prot-ring-progress');
+            protRing.style.strokeDashoffset = protOffset;
+
+            const protDiff = protTarget - totalProt;
+            const protMainEl = document.getElementById('prot-ring-main');
+            const protSubEl = document.getElementById('prot-ring-sub');
+
+            if (protDiff >= 0) {
+                protMainEl.className = 'text-2xl font-bold text-brand-700 leading-tight';
+                protMainEl.textContent = `${roundNum(protDiff, 1)}g`;
+                protSubEl.textContent = 'left';
+            } else {
+                protMainEl.className = 'text-xl font-bold text-emerald-600 leading-tight';
+                protMainEl.textContent = `+${roundNum(Math.abs(protDiff), 1)}g`;
+                protSubEl.textContent = 'over target';
+            }
+
+            // Target Summary Cards
+            const protKcal = Math.round(totalProt * 4);
+            const targetProtShare = calTarget > 0 ? Math.round(((protTarget * 4) / calTarget) * 100) : 0;
+            document.getElementById('target-stat-prot-kcal').textContent = `${protKcal.toLocaleString()} kcal`;
+            document.getElementById('target-stat-prot-share').textContent = `${targetProtShare}% of calories`;
+            document.getElementById('target-stat-meals').textContent = `${entries.length} ${entries.length === 1 ? 'item' : 'items'}`;
         }
 
         // =========================================================================
@@ -1656,12 +1793,12 @@
                             </div>
                         </div>
                         <div class="flex items-center gap-1.5 self-end sm:self-center shrink-0">
-                            <button onclick="editFood('${food.id}')" title="Edit food"
-                                class="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 transition flex items-center gap-1">
+                            <button type="button" onclick="editFood('${food.id}')" title="Edit food"
+                                class="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 transition flex items-center gap-1 cursor-pointer">
                                 <i data-lucide="edit-2" class="w-3.5 h-3.5"></i> Edit
                             </button>
-                            <button onclick="confirmDeleteFood('${food.id}')" title="Delete food"
-                                class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition">
+                            <button type="button" onclick="confirmDeleteFood('${food.id}')" title="Delete food"
+                                class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer">
                                 <i data-lucide="trash-2" class="w-4 h-4"></i>
                             </button>
                         </div>
@@ -1768,8 +1905,7 @@
                     document.getElementById('target-protein').value = appState.targets.protein;
                     renderFoodDatabase();
                     updateLogFoodDropdown();
-                    renderDashboard();
-                    renderHistory();
+                    renderAllViews();
                     showToast(`Database ${mode === 'replace' ? 'restored' : 'merged'} successfully!`);
 
                     await persistChange(() => replaceAllSupabaseData());
@@ -1812,8 +1948,8 @@
             currentDate = dateStr;
             const datePicker = document.getElementById('log-date-picker');
             if (datePicker) datePicker.value = dateStr;
-            renderDashboard();
-            switchTab('dashboard');
+            renderAllViews();
+            switchTab('food-logs');
             showToast(`Loaded log for ${formatReadableDate(dateStr)}`);
         }
 
@@ -1826,7 +1962,8 @@
                     delete appState.logs[dateStr];
                     renderHistory();
                     if (currentDate === dateStr) {
-                        renderDashboard();
+                        renderFoodLogsTab();
+                        renderDailyTargetTab();
                     }
                     showToast(`Deleted history for ${dateStr}.`);
 
@@ -1882,7 +2019,7 @@
             if (daySummaries.length === 0) {
                 container.innerHTML = `
                     <div class="p-12 text-center text-xs text-slate-400">
-                        No logged history yet. Start logging foods in the <strong>Daily Log & Targets</strong> tab to build your history.
+                        No logged history yet. Start logging foods in the <strong>Food Logs</strong> tab to build your history.
                     </div>
                 `;
                 return;
@@ -1947,16 +2084,16 @@
                                 </div>
 
                                 <div class="flex items-center gap-1.5 ml-auto sm:ml-0">
-                                    <button onclick="openHistoryDateInLog('${dateStr}')" title="Open & edit in Daily Log"
-                                        class="px-2.5 py-1.5 rounded-lg text-xs font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 transition">
+                                    <button type="button" onclick="openHistoryDateInLog('${dateStr}')" title="Open & edit in Food Logs"
+                                        class="px-2.5 py-1.5 rounded-lg text-xs font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 transition cursor-pointer">
                                         Open Log
                                     </button>
-                                    <button onclick="toggleHistoryDetails('${dateStr}')" title="Toggle food details"
-                                        class="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 transition">
+                                    <button type="button" onclick="toggleHistoryDetails('${dateStr}')" title="Toggle food details"
+                                        class="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 transition cursor-pointer">
                                         <i id="history-chevron-${dateStr}" data-lucide="chevron-down" class="w-4 h-4 transition-transform duration-200"></i>
                                     </button>
-                                    <button onclick="confirmDeleteHistoryDay('${dateStr}')" title="Delete this day's log"
-                                        class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition">
+                                    <button type="button" onclick="confirmDeleteHistoryDay('${dateStr}')" title="Delete this day's log"
+                                        class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer">
                                         <i data-lucide="trash-2" class="w-4 h-4"></i>
                                     </button>
                                 </div>
@@ -1988,8 +2125,7 @@
                     document.getElementById('target-protein').value = 150;
                     renderFoodDatabase();
                     updateLogFoodDropdown();
-                    renderDashboard();
-                    renderHistory();
+                    renderAllViews();
                     showToast('App reset to starter defaults.');
 
                     await persistChange(() => replaceAllSupabaseData());
@@ -2011,8 +2147,7 @@
             initFoodSearchSelector();
             renderFoodDatabase();
             updateLogFoodDropdown();
-            renderDashboard();
-            renderHistory();
+            renderAllViews();
             updateBackupStats();
             lucide.createIcons();
             subscribeToRealtimeChanges();
