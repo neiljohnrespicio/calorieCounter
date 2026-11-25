@@ -477,7 +477,7 @@
             <div class="bg-white rounded-2xl p-6 border border-rose-200/70 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                     <h3 class="text-sm font-semibold text-rose-700">Reset to Starter Defaults</h3>
-                    <p class="text-xs text-slate-500 mt-0.5">Restore the original sample foods and clear custom logs from local storage and Supabase.</p>
+                    <p class="text-xs text-slate-500 mt-0.5">Restore the original sample foods and clear custom logs from local storage and base.</p>
                 </div>
                 <button onclick="confirmFactoryReset()" class="px-4 py-2 rounded-xl text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition whitespace-nowrap">
                     Reset All Data
@@ -489,10 +489,10 @@
 
     <script>
         // =========================================================================
-        // 0. SUPABASE CONFIGURATION
+        // 0. BASE CONFIGURATION
         // =========================================================================
-        const SUPABASE_URL = 'https://xihtztixddwlewgklmry.supabase.co/rest/v1/';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhpaHR6dGl4ZGR3bGV3Z2tsbXJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA5NzYyMTEsImV4cCI6MjA4NjU1MjIxMX0.EIImVGvn-_Tfyar5uxoMLSkAgQRGjOS4fTN_fx5vSXk';
+        const BASE_URL = 'https://xihtztixddwlewgklmry.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_If0ta8i0tp_zbytAAzVn1Q_c7cNI1z2';
 
         const isSupabaseConfigured =
             SUPABASE_URL &&
