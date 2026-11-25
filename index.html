@@ -10,6 +10,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Supabase JS v2 CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -64,7 +66,7 @@
                 </div>
             </div>
 
-            <!-- Autosave Status Badge -->
+            <!-- Autosave / Cloud Sync Status Badge -->
             <div id="autosave-badge" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/70 text-xs font-medium transition-all">
                 <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-emerald-600"></i>
                 <span id="autosave-text">All changes autosaved</span>
@@ -101,10 +103,10 @@
         <!-- TAB 1: DAILY LOG & TARGETS                 -->
         <!-- ========================================== -->
         <section id="view-dashboard" class="space-y-6">
-            
+
             <!-- Top Grid: Targets & Progress -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
+
                 <!-- Daily Targets Setup Card -->
                 <div class="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs flex flex-col justify-between">
                     <div>
@@ -288,7 +290,7 @@
         <!-- ========================================== -->
         <section id="view-database" class="hidden space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                
+
                 <!-- Add / Edit Food Form (5 cols) -->
                 <div class="lg:col-span-5 bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs h-fit">
                     <div class="flex items-center justify-between mb-4">
@@ -307,7 +309,7 @@
 
                     <form id="food-db-form" class="space-y-4">
                         <input type="hidden" id="edit-food-id" value="">
-                        
+
                         <div>
                             <label for="food-name" class="block text-xs font-medium text-slate-700 mb-1">Food Name *</label>
                             <input type="text" id="food-name" required placeholder="e.g., Grilled Chicken Breast"
@@ -400,7 +402,7 @@
         <!-- ========================================== -->
         <section id="view-backup" class="hidden space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
+
                 <!-- Export Card -->
                 <div class="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs flex flex-col justify-between">
                     <div>
@@ -475,7 +477,7 @@
             <div class="bg-white rounded-2xl p-6 border border-rose-200/70 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                     <h3 class="text-sm font-semibold text-rose-700">Reset to Starter Defaults</h3>
-                    <p class="text-xs text-slate-500 mt-0.5">Restore the original sample foods and clear all custom logs from browser storage.</p>
+                    <p class="text-xs text-slate-500 mt-0.5">Restore the original sample foods and clear custom logs from local storage and Supabase.</p>
                 </div>
                 <button onclick="confirmFactoryReset()" class="px-4 py-2 rounded-xl text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition whitespace-nowrap">
                     Reset All Data
@@ -487,11 +489,28 @@
 
     <script>
         // =========================================================================
-        // 1. STATE MANAGEMENT & AUTOSAVE ENGINE
+        // 0. SUPABASE CONFIGURATION
+        // =========================================================================
+        const SUPABASE_URL = 'https://xihtztixddwlewgklmry.supabase.co/rest/v1/';
+        const SUPABASE_KEY = 'sb_publishable_If0ta8i0tp_zbytAAzVn1Q_c7cNI1z2';
+
+        const isSupabaseConfigured =
+            SUPABASE_URL &&
+            !SUPABASE_URL.startsWith('YOUR_') &&
+            SUPABASE_KEY &&
+            !SUPABASE_KEY.startsWith('YOUR_') &&
+            window.supabase &&
+            typeof window.supabase.createClient === 'function';
+
+        const supabaseClient = isSupabaseConfigured
+            ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+            : null;
+
+        // =========================================================================
+        // 1. STATE MANAGEMENT, LOCAL CACHE & SUPABASE SYNC
         // =========================================================================
         const STORAGE_KEY = 'nutrigram_app_state_v1';
 
-        // Starter foods with accurate per-gram calorie & protein values
         const DEFAULT_FOODS = [
             {
                 id: 'food_chicken_breast',
@@ -544,10 +563,27 @@
 
         let currentDate = getTodayDateString();
         let autosaveTimeout = null;
-        const RING_CIRCUMFERENCE = 2 * Math.PI * 52; // ~326.7256 for r=52
+        const RING_CIRCUMFERENCE = 2 * Math.PI * 52;
 
-        // Load from localStorage on startup
-        function loadState() {
+        function setSyncBadge(statusText, mode = 'synced') {
+            const badge = document.getElementById('autosave-badge');
+            const text = document.getElementById('autosave-text');
+            if (!badge || !text) return;
+
+            text.textContent = statusText;
+            badge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all';
+
+            if (mode === 'error') {
+                badge.classList.add('bg-rose-50', 'text-rose-700', 'border-rose-200');
+            } else if (mode === 'local') {
+                badge.classList.add('bg-amber-50', 'text-amber-700', 'border-amber-200');
+            } else {
+                badge.classList.add('bg-emerald-50', 'text-emerald-700', 'border-emerald-200/70');
+            }
+        }
+
+        // Load from localStorage first for instant UI
+        function loadLocalState() {
             try {
                 const raw = localStorage.getItem(STORAGE_KEY);
                 if (raw) {
@@ -560,37 +596,206 @@
                     appState.logs = (parsed?.logs && typeof parsed.logs === 'object') ? parsed.logs : {};
                 } else {
                     appState.foods = [...DEFAULT_FOODS];
-                    saveState(true);
+                    saveLocalOnly();
                 }
             } catch (err) {
-                console.error('Failed to load state:', err);
+                console.error('Failed to load local state:', err);
                 appState.foods = [...DEFAULT_FOODS];
                 showToast('Could not read saved data; loaded defaults.', 'error');
             }
         }
 
-        // Autosave to localStorage
-        function saveState(silent = false) {
+        function saveLocalOnly() {
             try {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
                 updateFoodCountBadge();
                 updateHistoryCountBadge();
                 updateBackupStats();
-
-                if (!silent) {
-                    const badge = document.getElementById('autosave-badge');
-                    const text = document.getElementById('autosave-text');
-                    const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                    text.textContent = `Autosaved at ${now}`;
-                    badge.classList.add('ring-2', 'ring-emerald-300');
-                    clearTimeout(autosaveTimeout);
-                    autosaveTimeout = setTimeout(() => {
-                        badge.classList.remove('ring-2', 'ring-emerald-300');
-                    }, 900);
-                }
             } catch (err) {
-                console.error('Autosave error:', err);
-                showToast('Autosave failed (storage limit or private mode).', 'error');
+                console.error('Local save error:', err);
+            }
+        }
+
+        // Pull cloud state from Supabase on startup
+        async function syncFromSupabase() {
+            if (!supabaseClient) {
+                setSyncBadge('Local storage only (add Supabase keys)', 'local');
+                return;
+            }
+
+            try {
+                setSyncBadge('Syncing with Supabase...', 'synced');
+
+                const [targetsRes, foodsRes, logsRes] = await Promise.all([
+                    supabaseClient.from('user_targets').select('*').eq('id', 'default').maybeSingle(),
+                    supabaseClient.from('foods').select('*').order('name', { ascending: true }),
+                    supabaseClient.from('food_logs').select('*').order('created_at', { ascending: true })
+                ]);
+
+                if (targetsRes.error) throw targetsRes.error;
+                if (foodsRes.error) throw foodsRes.error;
+                if (logsRes.error) throw logsRes.error;
+
+                if (targetsRes.data) {
+                    appState.targets = {
+                        calories: Number(targetsRes.data.daily_calories) || 2000,
+                        protein: Number(targetsRes.data.daily_protein) || 150
+                    };
+                } else {
+                    await syncTargetsToSupabase();
+                }
+
+                if (Array.isArray(foodsRes.data) && foodsRes.data.length > 0) {
+                    appState.foods = foodsRes.data.map(row => ({
+                        id: row.id,
+                        name: row.name,
+                        caloriesPerGram: Number(row.calories_per_gram) || 0,
+                        proteinPerGram: Number(row.protein_per_gram) || 0
+                    }));
+                } else if (appState.foods.length > 0) {
+                    await upsertFoodsToSupabase(appState.foods);
+                }
+
+                const groupedLogs = {};
+                (logsRes.data || []).forEach(row => {
+                    const dateKey = String(row.log_date).slice(0, 10);
+                    if (!groupedLogs[dateKey]) groupedLogs[dateKey] = [];
+                    groupedLogs[dateKey].push({
+                        entryId: row.entry_id,
+                        foodId: row.food_id,
+                        foodName: row.food_name,
+                        grams: Number(row.grams) || 0,
+                        calories: Number(row.calories) || 0,
+                        protein: Number(row.protein) || 0
+                    });
+                });
+                appState.logs = groupedLogs;
+
+                document.getElementById('target-calories').value = appState.targets.calories;
+                document.getElementById('target-protein').value = appState.targets.protein;
+
+                saveLocalOnly();
+                renderFoodDatabase();
+                updateLogFoodDropdown();
+                renderDashboard();
+                renderHistory();
+                setSyncBadge('Synced with Supabase', 'synced');
+            } catch (err) {
+                console.error('Supabase initial sync error:', err);
+                setSyncBadge('Supabase sync error (using local)', 'error');
+                showToast('Could not sync with Supabase; check URL, key, and SQL tables.', 'error');
+            }
+        }
+
+        // Supabase helper mutations
+        async function syncTargetsToSupabase() {
+            if (!supabaseClient) return;
+            const { error } = await supabaseClient
+                .from('user_targets')
+                .upsert({
+                    id: 'default',
+                    daily_calories: appState.targets.calories,
+                    daily_protein: appState.targets.protein,
+                    updated_at: new Date().toISOString()
+                });
+            if (error) throw error;
+        }
+
+        async function upsertFoodsToSupabase(foodsArray) {
+            if (!supabaseClient || !Array.isArray(foodsArray) || foodsArray.length === 0) return;
+            const rows = foodsArray.map(f => ({
+                id: f.id,
+                name: f.name,
+                calories_per_gram: f.caloriesPerGram,
+                protein_per_gram: f.proteinPerGram
+            }));
+            const { error } = await supabaseClient.from('foods').upsert(rows);
+            if (error) throw error;
+        }
+
+        async function deleteFoodFromSupabase(foodId) {
+            if (!supabaseClient) return;
+            const { error } = await supabaseClient.from('foods').delete().eq('id', foodId);
+            if (error) throw error;
+        }
+
+        async function insertLogEntryToSupabase(dateStr, entry) {
+            if (!supabaseClient) return;
+            const { error } = await supabaseClient.from('food_logs').upsert({
+                entry_id: entry.entryId,
+                log_date: dateStr,
+                food_id: entry.foodId,
+                food_name: entry.foodName,
+                grams: entry.grams,
+                calories: entry.calories,
+                protein: entry.protein
+            });
+            if (error) throw error;
+        }
+
+        async function deleteLogEntryFromSupabase(entryId) {
+            if (!supabaseClient) return;
+            const { error } = await supabaseClient.from('food_logs').delete().eq('entry_id', entryId);
+            if (error) throw error;
+        }
+
+        async function clearDateLogsInSupabase(dateStr) {
+            if (!supabaseClient) return;
+            const { error } = await supabaseClient.from('food_logs').delete().eq('log_date', dateStr);
+            if (error) throw error;
+        }
+
+        async function replaceAllSupabaseData() {
+            if (!supabaseClient) return;
+            await syncTargetsToSupabase();
+
+            const { error: delLogsErr } = await supabaseClient.from('food_logs').delete().neq('entry_id', '');
+            if (delLogsErr) throw delLogsErr;
+
+            const { error: delFoodsErr } = await supabaseClient.from('foods').delete().neq('id', '');
+            if (delFoodsErr) throw delFoodsErr;
+
+            if (appState.foods.length > 0) {
+                await upsertFoodsToSupabase(appState.foods);
+            }
+
+            const allLogRows = [];
+            Object.entries(appState.logs).forEach(([dateKey, entries]) => {
+                if (!Array.isArray(entries)) return;
+                entries.forEach(entry => {
+                    allLogRows.push({
+                        entry_id: entry.entryId,
+                        log_date: dateKey,
+                        food_id: entry.foodId,
+                        food_name: entry.foodName,
+                        grams: entry.grams,
+                        calories: entry.calories,
+                        protein: entry.protein
+                    });
+                });
+            });
+
+            if (allLogRows.length > 0) {
+                const { error: insLogsErr } = await supabaseClient.from('food_logs').insert(allLogRows);
+                if (insLogsErr) throw insLogsErr;
+            }
+        }
+
+        function saveState(silent = false) {
+            saveLocalOnly();
+
+            if (!silent) {
+                const badge = document.getElementById('autosave-badge');
+                const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                setSyncBadge(
+                    supabaseClient ? `Saved & synced at ${now}` : `Saved locally at ${now}`,
+                    supabaseClient ? 'synced' : 'local'
+                );
+                badge.classList.add('ring-2', 'ring-emerald-300');
+                clearTimeout(autosaveTimeout);
+                autosaveTimeout = setTimeout(() => {
+                    badge.classList.remove('ring-2', 'ring-emerald-300');
+                }, 900);
             }
         }
 
@@ -688,6 +893,8 @@
         // =========================================================================
         // 3. TARGETS & DATE INITIALIZATION
         // =========================================================================
+        let targetSyncTimer = null;
+
         function initTargetsAndDate() {
             const calInput = document.getElementById('target-calories');
             const protInput = document.getElementById('target-protein');
@@ -697,17 +904,25 @@
             protInput.value = appState.targets.protein;
             datePicker.value = currentDate;
 
-            calInput.addEventListener('input', () => {
+            const handleTargetChange = () => {
                 appState.targets.calories = Math.max(0, parseFloat(calInput.value) || 0);
-                saveState();
-                renderDashboard();
-            });
-
-            protInput.addEventListener('input', () => {
                 appState.targets.protein = Math.max(0, parseFloat(protInput.value) || 0);
                 saveState();
                 renderDashboard();
-            });
+
+                clearTimeout(targetSyncTimer);
+                targetSyncTimer = setTimeout(async () => {
+                    try {
+                        await syncTargetsToSupabase();
+                    } catch (err) {
+                        console.error('Target sync error:', err);
+                        setSyncBadge('Target cloud sync failed', 'error');
+                    }
+                }, 400);
+            };
+
+            calInput.addEventListener('input', handleTargetChange);
+            protInput.addEventListener('input', handleTargetChange);
 
             datePicker.addEventListener('change', (e) => {
                 if (e.target.value) {
@@ -732,7 +947,6 @@
 
             searchInput.addEventListener('input', (e) => {
                 const query = e.target.value;
-                // Clear selected ID if user modifies text away from selected food
                 const selectedId = document.getElementById('log-food-selected-id').value;
                 if (selectedId) {
                     const currentFood = appState.foods.find(f => f.id === selectedId);
@@ -746,7 +960,6 @@
                 dropdown.classList.remove('hidden');
             });
 
-            // Close dropdown when clicking outside
             document.addEventListener('click', (e) => {
                 if (!wrapper.contains(e.target)) {
                     dropdown.classList.add('hidden');
@@ -862,13 +1075,12 @@
 
         document.getElementById('log-food-grams').addEventListener('input', updateLogPreview);
 
-        document.getElementById('log-food-form').addEventListener('submit', (e) => {
+        document.getElementById('log-food-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            let foodId = document.getElementById('log-food-selected-id').value;
+            const foodId = document.getElementById('log-food-selected-id').value;
             const searchQuery = document.getElementById('log-food-search').value.trim();
             const grams = parseFloat(document.getElementById('log-food-grams').value);
 
-            // Allow exact name match fallback if user typed exact food name without clicking dropdown
             let food = appState.foods.find(f => f.id === foodId);
             if (!food && searchQuery) {
                 food = appState.foods.find(f => f.name.toLowerCase() === searchQuery.toLowerCase());
@@ -888,7 +1100,6 @@
                 appState.logs[currentDate] = [];
             }
 
-            // Snapshot the food values at the time of logging so history stays accurate
             const logEntry = {
                 entryId: 'log_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
                 foodId: food.id,
@@ -904,14 +1115,28 @@
             saveState();
             renderDashboard();
             showToast(`Logged ${grams}g of ${food.name}`);
+
+            try {
+                await insertLogEntryToSupabase(currentDate, logEntry);
+            } catch (err) {
+                console.error('Insert log error:', err);
+                setSyncBadge('Log cloud sync failed', 'error');
+            }
         });
 
-        function deleteLogEntry(entryId) {
+        async function deleteLogEntry(entryId) {
             if (!appState.logs[currentDate]) return;
             appState.logs[currentDate] = appState.logs[currentDate].filter(item => item.entryId !== entryId);
             saveState();
             renderDashboard();
             showToast('Removed entry from log.');
+
+            try {
+                await deleteLogEntryFromSupabase(entryId);
+            } catch (err) {
+                console.error('Delete log error:', err);
+                setSyncBadge('Delete cloud sync failed', 'error');
+            }
         }
 
         function confirmClearTodayLog() {
@@ -923,11 +1148,19 @@
             showConfirmModal(
                 'Reset Day Log',
                 `Remove all ${entries.length} logged food items for ${currentDate}?`,
-                () => {
-                    appState.logs[currentDate] = [];
+                async () => {
+                    const dateToClear = currentDate;
+                    appState.logs[dateToClear] = [];
                     saveState();
                     renderDashboard();
                     showToast('Day log cleared.');
+
+                    try {
+                        await clearDateLogsInSupabase(dateToClear);
+                    } catch (err) {
+                        console.error('Clear date logs error:', err);
+                        setSyncBadge('Reset cloud sync failed', 'error');
+                    }
                 }
             );
         }
@@ -947,7 +1180,6 @@
                 totalProt += Number(entry.protein) || 0;
             });
 
-            // Update Minimalist Circular Remaining Target Charts
             const calTarget = appState.targets.calories || 0;
             const protTarget = appState.targets.protein || 0;
 
@@ -1034,7 +1266,7 @@
         // =========================================================================
         // 4. FOOD DATABASE MANAGEMENT (PER-GRAM)
         // =========================================================================
-        document.getElementById('food-db-form').addEventListener('submit', (e) => {
+        document.getElementById('food-db-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const editId = document.getElementById('edit-food-id').value;
             const name = document.getElementById('food-name').value.trim();
@@ -1046,25 +1278,27 @@
                 return;
             }
 
+            let foodRecord;
             if (editId) {
                 const idx = appState.foods.findIndex(f => f.id === editId);
                 if (idx !== -1) {
-                    appState.foods[idx] = {
+                    foodRecord = {
                         ...appState.foods[idx],
                         name,
                         caloriesPerGram: cal,
                         proteinPerGram: prot
                     };
+                    appState.foods[idx] = foodRecord;
                     showToast(`Updated "${name}" in database.`);
                 }
             } else {
-                const newFood = {
+                foodRecord = {
                     id: 'food_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
                     name,
                     caloriesPerGram: cal,
                     proteinPerGram: prot
                 };
-                appState.foods.push(newFood);
+                appState.foods.push(foodRecord);
                 showToast(`Added "${name}" to database.`);
             }
 
@@ -1072,6 +1306,15 @@
             saveState();
             renderFoodDatabase();
             updateLogFoodDropdown();
+
+            if (foodRecord) {
+                try {
+                    await upsertFoodsToSupabase([foodRecord]);
+                } catch (err) {
+                    console.error('Food sync error:', err);
+                    setSyncBadge('Food cloud sync failed', 'error');
+                }
+            }
         });
 
         function editFood(foodId) {
@@ -1105,12 +1348,19 @@
             showConfirmModal(
                 'Delete Food',
                 `Delete "${food.name}" from your food database? Existing past logs will remain intact.`,
-                () => {
+                async () => {
                     appState.foods = appState.foods.filter(f => f.id !== foodId);
                     saveState();
                     renderFoodDatabase();
                     updateLogFoodDropdown();
                     showToast(`Deleted "${food.name}".`);
+
+                    try {
+                        await deleteFoodFromSupabase(foodId);
+                    } catch (err) {
+                        console.error('Delete food error:', err);
+                        setSyncBadge('Food delete sync failed', 'error');
+                    }
                 }
             );
         }
@@ -1220,7 +1470,7 @@
             const mode = document.querySelector('input[name="import-mode"]:checked')?.value || 'merge';
             const reader = new FileReader();
 
-            reader.onload = (e) => {
+            reader.onload = async (e) => {
                 try {
                     const parsed = JSON.parse(e.target.result);
                     const importedData = parsed.data ? parsed.data : parsed;
@@ -1239,7 +1489,6 @@
                             logs: (importedData.logs && typeof importedData.logs === 'object') ? importedData.logs : {}
                         };
                     } else {
-                        // Merge foods by id or case-insensitive name
                         const existingIds = new Set(appState.foods.map(f => f.id));
                         const existingNames = new Set(appState.foods.map(f => f.name.toLowerCase()));
                         (importedData.foods || []).forEach(f => {
@@ -1248,7 +1497,6 @@
                             }
                         });
 
-                        // Merge logs by entryId
                         if (importedData.logs && typeof importedData.logs === 'object') {
                             Object.entries(importedData.logs).forEach(([dateKey, entries]) => {
                                 if (!Array.isArray(entries)) return;
@@ -1271,6 +1519,13 @@
                     renderDashboard();
                     renderHistory();
                     showToast(`Database ${mode === 'replace' ? 'restored' : 'merged'} successfully!`);
+
+                    try {
+                        await replaceAllSupabaseData();
+                    } catch (syncErr) {
+                        console.error('Import sync error:', syncErr);
+                        setSyncBadge('Import cloud sync failed', 'error');
+                    }
                 } catch (err) {
                     console.error('Import error:', err);
                     showToast('Invalid JSON file. Please select a valid NutriGram backup.', 'error');
@@ -1320,7 +1575,7 @@
             showConfirmModal(
                 'Delete Day History',
                 `Delete all ${entries.length} logged items for ${formatReadableDate(dateStr)}?`,
-                () => {
+                async () => {
                     delete appState.logs[dateStr];
                     saveState();
                     renderHistory();
@@ -1328,6 +1583,13 @@
                         renderDashboard();
                     }
                     showToast(`Deleted history for ${dateStr}.`);
+
+                    try {
+                        await clearDateLogsInSupabase(dateStr);
+                    } catch (err) {
+                        console.error('Delete history day error:', err);
+                        setSyncBadge('History delete sync failed', 'error');
+                    }
                 }
             );
         }
@@ -1349,7 +1611,7 @@
 
             const activeDates = Object.keys(appState.logs)
                 .filter(d => Array.isArray(appState.logs[d]) && appState.logs[d].length > 0)
-                .sort((a, b) => b.localeCompare(a)); // Most recent first
+                .sort((a, b) => b.localeCompare(a));
 
             const totalDays = activeDates.length;
             let grandTotalCal = 0;
@@ -1409,7 +1671,6 @@
                 return `
                     <div class="p-5 sm:px-6 hover:bg-slate-50/50 transition">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                            <!-- Date & Item Count -->
                             <div class="flex items-center gap-3 cursor-pointer" onclick="toggleHistoryDetails('${dateStr}')">
                                 <div class="w-10 h-10 rounded-xl ${isToday ? 'bg-brand-50 text-brand-700 border border-brand-200' : 'bg-slate-100 text-slate-600'} flex items-center justify-center shrink-0">
                                     <i data-lucide="calendar" class="w-4 h-4"></i>
@@ -1423,7 +1684,6 @@
                                 </div>
                             </div>
 
-                            <!-- Totals & Mini Progress -->
                             <div class="flex flex-wrap items-center gap-4 sm:gap-6">
                                 <div class="min-w-[120px]">
                                     <div class="flex justify-between text-xs mb-1">
@@ -1445,7 +1705,6 @@
                                     </div>
                                 </div>
 
-                                <!-- Actions -->
                                 <div class="flex items-center gap-1.5 ml-auto sm:ml-0">
                                     <button onclick="openHistoryDateInLog('${dateStr}')" title="Open & edit in Daily Log"
                                         class="px-2.5 py-1.5 rounded-lg text-xs font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 transition">
@@ -1463,7 +1722,6 @@
                             </div>
                         </div>
 
-                        <!-- Collapsible Food Breakdown -->
                         <div id="history-details-${dateStr}" class="hidden mt-4 pt-3 border-t border-slate-100 bg-slate-50/70 rounded-xl p-3 space-y-1.5">
                             ${itemsRows}
                         </div>
@@ -1477,8 +1735,8 @@
         function confirmFactoryReset() {
             showConfirmModal(
                 'Reset All Data',
-                'This will erase all custom foods, targets, and logged days and restore starter defaults. Continue?',
-                () => {
+                'This will erase custom foods, targets, and logged days and restore starter defaults. Continue?',
+                async () => {
                     localStorage.removeItem(STORAGE_KEY);
                     appState = {
                         targets: { calories: 2000, protein: 150 },
@@ -1493,13 +1751,20 @@
                     renderDashboard();
                     renderHistory();
                     showToast('App reset to starter defaults.');
+
+                    try {
+                        await replaceAllSupabaseData();
+                    } catch (err) {
+                        console.error('Reset cloud sync error:', err);
+                        setSyncBadge('Reset cloud sync failed', 'error');
+                    }
                 }
             );
         }
 
         // Initialize App on Window Load
-        window.addEventListener('DOMContentLoaded', () => {
-            loadState();
+        window.addEventListener('DOMContentLoaded', async () => {
+            loadLocalState();
             initTargetsAndDate();
             initFoodSearchSelector();
             renderFoodDatabase();
@@ -1508,6 +1773,7 @@
             renderHistory();
             updateBackupStats();
             lucide.createIcons();
+            await syncFromSupabase();
         });
     </script>
 </body>
